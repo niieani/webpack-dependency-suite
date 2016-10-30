@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2015",
+    "noImplicitAny": false,
+    "inlineSourceMap": true,
+    "allowJs": true,
+    "strictNullChecks": true
+  }
+}

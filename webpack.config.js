@@ -18,7 +18,7 @@ module.exports = {
     rules: [
       {
         test: /\.html$/,
-        include: [path.resolve('app')],
+        include: [path.resolve('app'), path.resolve('app-extra')],
         loaders: [{ loader: 'html' }]
       },
       {
@@ -28,7 +28,7 @@ module.exports = {
         query: {
           convention: 'all-files-matching-regex',
           regex: /\.js$/,
-          directory: path.resolve('app')
+          directory: path.resolve('app-extra')
         }
       },
       // We are chianing the custom loader to babel loader.
@@ -36,12 +36,12 @@ module.exports = {
       // must always return JavaScript (as it is then processed into the compilation)
       {
         test: /\.js$/,
-        include: [path.resolve('app')],
+        include: [path.resolve('app'), path.resolve('app-extra')],
         // loaders: [
         //   'comment-loader'
         // ]
-        oneOf: [
-          {
+        // oneOf: [
+        //   {
             loaders: [
               // 'babel',
               'comment-loader',
@@ -60,8 +60,8 @@ module.exports = {
               },
               // 'custom-loader',
             ],
-          },
-        ],
+        //   },
+        // ],
       },
     ],
   },

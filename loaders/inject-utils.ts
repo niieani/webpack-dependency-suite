@@ -48,16 +48,14 @@ export async function getRequireStrings(maybeResolvedRequires: Array<RequireData
     pathsAndLoaders = pathsAndLoaders.map(p => {
       const rq = requires.find(r => r.resolve.path === p.path)
       if (!rq) return Object.assign(p, {removed: true})
-      return Object.assign(p, { loaders: (p.loaders && p.loaders.length && !forceFallbackLoaders) ? p.loaders : (rq.fallbackLoaders || []), literal: rq.literal })
+      return Object.assign(p, { loaders: (p.loaders && !forceFallbackLoaders) ? p.loaders : (rq.fallbackLoaders || []), literal: rq.literal })
     }).filter(r => !r.removed)
   } else {
     pathsAndLoaders = requires.map(r => ({ literal: r.literal, loaders: r.fallbackLoaders || [], path: r.resolve.path }))
   }
 
-  debugger
-
   return pathsAndLoaders.map(p =>
-    p.loaders && p.loaders.length ?
+    (p.loaders && p.loaders.length) ?
       (`!${p.loaders.join('!')}!` + (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)) :
       (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)
   )

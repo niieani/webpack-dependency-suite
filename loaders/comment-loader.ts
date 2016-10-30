@@ -98,14 +98,13 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
     const bundleLoaderPrefix = (lazy || chunkName) ? 'bundle?' : ''
     const fallbackLoaderQuery = `${bundleLoaderPrefix}${lazy}${and}${chunkName}`
 
-    return Object.assign({ fallbackLoaders: [fallbackLoaderQuery] }, toRequire)
+    return fallbackLoaderQuery ? Object.assign({ fallbackLoaders: [fallbackLoaderQuery] }, toRequire) : toRequire
   }) as Array<RequireData>
 
   log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 
   const requireStrings = await getRequireStrings(resourceData, query.addLoadersCallback, this, query.alwaysUseCommentBundles)
   const inject = requireStrings.map(wrapInRequireInclude).join('\n')
-
   appendCode(this, source, inject, sourceMap)
 }
 

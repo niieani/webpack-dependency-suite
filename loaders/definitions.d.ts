@@ -1,4 +1,3 @@
-
 import * as SourceMap from 'source-map'
 import * as fs from 'fs'
 
@@ -8,15 +7,29 @@ export interface PathWithLoaders {
    * strings of loaders with their queries without the '!'
    * (if want to cancel out all previous loaders, use '!!' at the beginning)
    */
-  loaders: Array<string>
+  loaders?: Array<string> | undefined
+  literal?: string | undefined
 }
 
-export type AddLoadersMethod = (files: string[]) => Array<PathWithLoaders> | Promise<Array<PathWithLoaders>>
+export type AddLoadersMethod = (files: Array<RequireData>, loaderInstance?: WebpackLoader) => Array<PathWithLoaders> | Promise<Array<PathWithLoaders>>
+
+export interface RequireData {
+  fallbackLoaders?: string[] | undefined
+  resolve: Resolver.ResolveResult // | undefined
+  literal: string
+}
 
 export interface AddLoadersQuery {
-  addLoaders?: AddLoadersMethod
+  addLoadersCallback?: AddLoadersMethod
   [customSetting: string]: any
 }
+
+/**
+ * WEBPACK
+ *
+ * @export
+ * @interface WebpackLoader
+ */
 
 export interface WebpackLoader {
   fs: typeof fs & CachedInputFileSystem

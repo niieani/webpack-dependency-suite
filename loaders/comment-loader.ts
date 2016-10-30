@@ -1,4 +1,4 @@
-import { WebpackLoader, AddLoadersQuery, Resolver } from './definitions'
+import { WebpackLoader, AddLoadersQuery, Resolver, AddLoadersMethod, RequireData } from './definitions'
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
@@ -6,7 +6,7 @@ import * as acorn from 'acorn'
 import * as walk from 'acorn/dist/walk'
 import * as ESTree from 'estree'
 import * as debug from 'debug'
-import {appendCode, getRequireStrings} from './inject-utils'
+import {appendCode, getRequireStrings, wrapInRequireInclude} from './inject-utils'
 
 const log = debug('comment-loader')
 
@@ -30,7 +30,10 @@ function findLiteralNodesAfterBlockComment(ast: ESTree.Program, comments: Array<
 }
 
 async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMap.RawSourceMap) {
-  const query = loaderUtils.parseQuery(this.query)
+  const query = loaderUtils.parseQuery(this.query) as {
+    addLoadersCallback?: AddLoadersMethod | undefined
+    alwaysUseCommentBundles?: boolean | undefined
+  }
 
   if (this.cacheable) {
     this.cacheable()
@@ -38,7 +41,7 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
 
   this.async()
 
-  log(`Parsing ${path.basename(this.resourcePath)}`)
+  // log(`Parsing ${path.basename(this.resourcePath)}`)
 
   const comments = []
 	let ast: ESTree.Program | undefined = undefined
@@ -71,7 +74,6 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
   }
 
   const commentsAndLiterals = findLiteralNodesAfterBlockComment(ast as ESTree.Program, comments, /^@import *(@lazy)? *(?:@chunk: +([\w-]+))? *(@lazy)?/)
-  log(`Adding resources to ${this.resourcePath}:`, commentsAndLiterals.join(', '))
 
   if (!commentsAndLiterals.length) {
     this.callback(undefined, source, sourceMap)
@@ -79,7 +81,7 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
   }
 
   const resourceDir = path.dirname(this.resourcePath)
-  let resolvedResources = await Promise.all(commentsAndLiterals.map(toRequire =>
+  const resolvedResources = await Promise.all(commentsAndLiterals.map(toRequire =>
     new Promise<{resolve: Resolver.ResolveResult} & typeof toRequire>((resolve, reject) =>
       this.resolve(resourceDir, toRequire.literal,
         (err, result, value) => err ? resolve() || this.emitWarning(err.message) :
@@ -88,25 +90,23 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
     )
   ))
 
-  resolvedResources = resolvedResources.filter(r => !!r)
-
-  resolvedResources.
-
-  // let requireStrings = await getRequireStrings(commentsAndLiterals.map(r => r.literal), query.addLoaders, resourceDir)
-  // this.resolve()
-  debugger;
-
-  const inject = commentsAndLiterals.map(toRequire => {
-    if (!toRequire.commentMatch) return // NOTE: only temporary https://github.com/Microsoft/TypeScript/issues/7657
+  const resourceData = resolvedResources.filter(r => !!r).map(toRequire => {
+    if (!toRequire.commentMatch) return toRequire // NOTE: until fixed https://github.com/Microsoft/TypeScript/issues/7657
     const lazy = (toRequire.commentMatch[1] || toRequire.commentMatch[3] && 'lazy') || ''
     const chunkName = (toRequire.commentMatch[2] && `name=${toRequire.commentMatch[2]}`) || ''
     const and = lazy && chunkName && '&'
     const bundleLoaderPrefix = (lazy || chunkName) ? 'bundle?' : ''
-    const bundleLoaderSuffix = (lazy || chunkName) ? '!' : ''
-    return `require.include('${bundleLoaderPrefix}${lazy}${and}${chunkName}${bundleLoaderSuffix}${toRequire.literal}');`
-  }).join('\n')
+    const fallbackLoaderQuery = `${bundleLoaderPrefix}${lazy}${and}${chunkName}`
 
-  return appendCode(this, source, inject, sourceMap)
+    return Object.assign({ fallbackLoaders: [fallbackLoaderQuery] }, toRequire)
+  }) as Array<RequireData>
+
+  log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
+
+  const requireStrings = await getRequireStrings(resourceData, query.addLoadersCallback, this, query.alwaysUseCommentBundles)
+  const inject = requireStrings.map(wrapInRequireInclude).join('\n')
+
+  appendCode(this, source, inject, sourceMap)
 }
 
 module.exports = loader;

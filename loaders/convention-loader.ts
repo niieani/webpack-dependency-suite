@@ -5,7 +5,7 @@ import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 import * as debug from 'debug'
 import * as webpack from 'webpack'
-import {appendCode, getRequireStrings} from './inject-utils'
+import {appendCode, getRequireStrings, resolveLiteral, wrapInRequireInclude} from './inject-utils'
 const log = debug('convention-loader')
 
 export type ConventionFunction = (fullPath: string, query?: ConventionQuery, loaderInstance?: WebpackLoader) => string | string[] | Promise<string | string[]>
@@ -18,7 +18,7 @@ export interface ConventionQuery extends AddLoadersQuery {
 }
 
 async function getFilesInDir(directory: string, {
-      skipHidden = true, recursive = false, regexFilter = null, emitWarning = console.warn.bind(console), emitError = console.error.bind(console), fileSystem = fs
+      skipHidden = true, recursive = false, regexFilter = undefined, emitWarning = console.warn.bind(console), emitError = console.error.bind(console), fileSystem = fs
     }: {
       skipHidden?: boolean, returnFullPath?: boolean, recursive?: boolean, regexFilter?: RegExp, emitWarning?: (warn: string) => void, emitError?: (warn: string) => void, fileSystem?: { readdir: Function, stat: Function }
     } = {}
@@ -41,11 +41,11 @@ async function getFilesInDir(directory: string, {
       )
   )).filter(stat => !!stat.stat)
 
-  if (skipHidden || regexFilter) {
+  if (regexFilter || skipHidden) {
     stats = stats
       .filter(file =>
-        (!regexFilter || !file.stat.isFile() || file.filePath.match(regexFilter)) &&
-        (!skipHidden || path.basename(file.filePath).indexOf('.') !== 0)
+        !(regexFilter && file.stat.isFile() && !file.filePath.match(regexFilter)) &&
+        !(skipHidden && path.basename(file.filePath).indexOf('.') === 0)
       )
   }
 
@@ -54,7 +54,9 @@ async function getFilesInDir(directory: string, {
 
   const subDirectoryStats = await Promise.all(
     stats.filter(file => file.stat.isDirectory()).map(
-      file => getFilesInDir(file.filePath, arguments[1])
+      file => getFilesInDir(file.filePath, {
+        skipHidden, recursive, regexFilter, emitWarning, emitError, fileSystem
+      })
     )
   )
 
@@ -86,7 +88,9 @@ const conventions: { [convention: string]: ConventionFunction } = {
       recursive: true
     })
 
-    return files.map(file => file.filePath)
+    return files
+      .filter(file => file.filePath !== loaderInstance.resourcePath)
+      .map(file => file.filePath)
   }
 }
 
@@ -104,7 +108,7 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
     return
   }
 
-  log(`Convention loading ${path.basename(this.resourcePath)}`)
+  // log(`Convention loading ${path.basename(this.resourcePath)}`)
 
   let requires: Array<string> = []
   const maybeAddResource = async (input: string | string[] | Promise<string | string[]>) => {
@@ -138,10 +142,20 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
   }
 
   const resourceDir = path.dirname(this.resourcePath)
-  requires = await getRequireStrings(requires, query.addLoaders, resourceDir)
+  const relativeRequires = requires.map(r => ({ literal: `./${path.relative(resourceDir, r)}` }))
 
-  log(`Adding resources to ${this.resourcePath}:`, requires.join(', '))
-  const inject = requires.map(toRequire => `require.include('${toRequire}');`).join('\n')
+  if (!relativeRequires.length) {
+    this.callback(undefined, source, sourceMap)
+    return
+  }
+
+  log(`Adding resources to ${this.resourcePath}: ${relativeRequires.map(r => r.literal).join(', ')}`)
+
+  const requireStrings = await getRequireStrings(
+    relativeRequires, query.addLoadersCallback, this
+  )
+
+  const inject = requireStrings.map(wrapInRequireInclude).join('\n')
 
   return appendCode(this, source, inject, sourceMap)
 }

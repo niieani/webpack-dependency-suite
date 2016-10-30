@@ -1,4 +1,4 @@
-import { WebpackLoader, AddLoadersMethod, PathWithLoaders, Resolver } from './definitions';
+import { WebpackLoader, AddLoadersMethod, PathWithLoaders, Resolver, RequireData } from './definitions';
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
@@ -33,23 +33,46 @@ export function appendCode(loader: WebpackLoader, source: string, inject: string
   }
 }
 
-export async function getRequireStrings(requires: Array<string>, addLoadersMethod: AddLoadersMethod | undefined | null, resourceDir: string) {
+export async function getRequireStrings(maybeResolvedRequires: Array<RequireData | { literal: string, resolve?: undefined }>, addLoadersMethod: AddLoadersMethod | undefined, loaderInstance: WebpackLoader, forceFallbackLoaders = false): Promise<Array<string>> {
+  const resourceDir = path.dirname(loaderInstance.resourcePath)
+
+  const requires = await Promise.all(maybeResolvedRequires.map(
+    async r => !r.resolve ? await resolveLiteral(r, loaderInstance) : r
+  )) as Array<RequireData>
+
+  let pathsAndLoaders: Array<PathWithLoaders & {removed?: boolean}>
+
   if (typeof addLoadersMethod === 'function') {
-    const maybePromise = addLoadersMethod(requires)
-    const pathsAndLoaders = (maybePromise as Promise<Array<PathWithLoaders>>).then ? await maybePromise : maybePromise as Array<PathWithLoaders>
-    return pathsAndLoaders//.map(p => Object.assign())
-      .map(p =>
-      p.loaders.length ?
-        `!${p.loaders.join('!')}!./${path.relative(resourceDir, p.path)}` :
-        `./${path.relative(resourceDir, p.path)}`
-    )
+    const maybePromise = addLoadersMethod(requires, loaderInstance)
+    pathsAndLoaders = (maybePromise as Promise<Array<PathWithLoaders>>).then ? await maybePromise : maybePromise as Array<PathWithLoaders>
+    pathsAndLoaders = pathsAndLoaders.map(p => {
+      const rq = requires.find(r => r.resolve.path === p.path)
+      if (!rq) return Object.assign(p, {removed: true})
+      return Object.assign(p, { loaders: (p.loaders && p.loaders.length && !forceFallbackLoaders) ? p.loaders : (rq.fallbackLoaders || []), literal: rq.literal })
+    }).filter(r => !r.removed)
   } else {
-    return requires.map(fullPath => `./${path.relative(resourceDir, fullPath)}`)
+    pathsAndLoaders = requires.map(r => ({ literal: r.literal, loaders: r.fallbackLoaders || [], path: r.resolve.path }))
   }
+
+  debugger
+
+  return pathsAndLoaders.map(p =>
+    p.loaders && p.loaders.length ?
+      (`!${p.loaders.join('!')}!` + (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)) :
+      (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)
+  )
 }
 
-export interface RequireData {
-  fallbackLoaders: string[]
-  resolve: Resolver.ResolveResult
-  literal: string
+export function wrapInRequireInclude(toRequire: string) {
+  return `require.include('${toRequire}');`
+}
+
+export function resolveLiteral<T extends { literal: string }>(toRequire: T, loaderInstance: WebpackLoader) {
+  const resourceDir = path.dirname(loaderInstance.resourcePath)
+  return new Promise<{resolve: Resolver.ResolveResult} & T>((resolve, reject) =>
+    loaderInstance.resolve(resourceDir, toRequire.literal,
+      (err, result, value) => err ? resolve() || loaderInstance.emitWarning(err.message) :
+      resolve(Object.assign({resolve: value}, toRequire))
+    )
+  )
 }

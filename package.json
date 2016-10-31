@@ -31,13 +31,16 @@
     "rootDir": "./app/"
   },
   "dependencies": {
+    "@types/cheerio": "^0.17.31",
     "acorn": "^4.0.3",
+    "cheerio": "^0.22.0",
     "debug": "^2.2.0",
     "loader-utils": "^0.2.16",
     "source-map": "^0.5.6"
   },
   "devDependencies": {
     "@types/acorn": "^1.0.31",
+    "@types/cheerio": "^0.17.31",
     "@types/debug": "^0.0.29",
     "@types/node": "^6.0.46",
     "@types/webpack": "^1.12.35",

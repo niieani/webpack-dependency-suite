@@ -19,7 +19,12 @@ module.exports = {
       {
         test: /\.html$/,
         include: [path.resolve('app'), path.resolve('app-extra')],
-        loaders: [{ loader: 'html' }]
+        use: [
+          {
+            loader: 'html-require-loader'
+          },
+          { loader: 'html' },
+        ]
       },
       {
         test: /\.js$/,
@@ -73,6 +78,7 @@ module.exports = {
       'custom-loader': require.resolve('./custom-loader'),
       'comment-loader': require.resolve('./loaders/comment-loader'),
       'convention-loader': require.resolve('./loaders/convention-loader'),
+      'html-require-loader': require.resolve('./loaders/html-require-loader'),
     },
     extensions: [".webpack-loader.js", ".web-loader.js", ".loader.js", ".js", ".ts"]
   },

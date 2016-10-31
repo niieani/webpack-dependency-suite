@@ -1,9 +1,9 @@
-import { WebpackLoader, AddLoadersMethod, PathWithLoaders, Resolver, RequireData } from './definitions';
+import { WebpackLoader, AddLoadersMethod, PathWithLoaders, Resolver, RequireData, RequireDataBase } from './definitions';
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 
-export function appendCode(loader: WebpackLoader, source: string, inject: string, sourceMap?: SourceMap.RawSourceMap, synchronousIfPossible = false) {
+export function appendCodeAndCallback(loader: WebpackLoader, source: string, inject: string, sourceMap?: SourceMap.RawSourceMap, synchronousIfPossible = false) {
   inject += (!source.trim().endsWith(';')) ? ';\n' : '\n'
 
   // support existing SourceMap
@@ -73,4 +73,16 @@ export function resolveLiteral<T extends { literal: string }>(toRequire: T, load
       resolve(Object.assign({resolve: value}, toRequire))
     )
   )
+}
+
+export function addFallbackLoaders(resolvedResources: Array<RequireDataBase>, loaderInstance: WebpackLoader) {
+  return resolvedResources.map(toRequire => {
+    const lazy = toRequire.lazy && 'lazy' || ''
+    const chunkName = (toRequire.chunk && `name=${toRequire.chunk}`) || ''
+    const and = lazy && chunkName && '&'
+    const bundleLoaderPrefix = (lazy || chunkName) ? 'bundle?' : ''
+    const fallbackLoaderQuery = `${bundleLoaderPrefix}${lazy}${and}${chunkName}`
+
+    return fallbackLoaderQuery ? Object.assign({ fallbackLoaders: [fallbackLoaderQuery] }, toRequire) : toRequire
+  }) as Array<RequireData>
 }

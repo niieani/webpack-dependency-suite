@@ -6,7 +6,7 @@ import * as acorn from 'acorn'
 import * as walk from 'acorn/dist/walk'
 import * as ESTree from 'estree'
 import * as debug from 'debug'
-import {appendCode, getRequireStrings, wrapInRequireInclude} from './inject-utils'
+import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveLiteral, addFallbackLoaders} from './inject-utils'
 
 const log = debug('comment-loader')
 
@@ -29,11 +29,12 @@ function findLiteralNodesAfterBlockComment(ast: ESTree.Program, comments: Array<
     .filter(comment => !!comment.literal)
 }
 
+export interface CommentLoaderQuery extends AddLoadersQuery {
+  alwaysUseCommentBundles?: boolean | undefined
+}
+
 async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMap.RawSourceMap) {
-  const query = loaderUtils.parseQuery(this.query) as {
-    addLoadersCallback?: AddLoadersMethod | undefined
-    alwaysUseCommentBundles?: boolean | undefined
-  }
+  const query = loaderUtils.parseQuery(this.query) as CommentLoaderQuery
 
   if (this.cacheable) {
     this.cacheable()
@@ -43,7 +44,7 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
 
   // log(`Parsing ${path.basename(this.resourcePath)}`)
 
-  const comments = []
+  const comments: Array<acorn.Comment> = []
 	let ast: ESTree.Program | undefined = undefined
 
   const POSSIBLE_AST_OPTIONS = [{
@@ -73,39 +74,48 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
     }
   }
 
-  const commentsAndLiterals = findLiteralNodesAfterBlockComment(ast as ESTree.Program, comments, /^@import *(@lazy)? *(?:@chunk: +([\w-]+))? *(@lazy)?/)
+  /**
+   * @import @lazy @chunk('module') 'something'
+   */
+  const commentsAndLiterals =
+    findLiteralNodesAfterBlockComment(ast as ESTree.Program, comments, /^@import *(@lazy)? *(?:@chunk\(['"`]*([\w-]+)['"`]*\))? *(@lazy)?/)
+    .map((cal: { commentMatch: RegExpMatchArray, literal: string }) => ({
+      literal: cal.literal,
+      lazy: !!(cal.commentMatch[1] || cal.commentMatch[3]),
+      chunk: cal.commentMatch[2]
+    }))
 
-  if (!commentsAndLiterals.length) {
+  /**
+   * @import('module') @lazy @chunk('module')
+   */
+  const commentOnlyImports = comments
+    .filter(c => c.type === 'Block')
+    .map(c => c.value.trim().match(/^@import\([\'"`]*([- \./\w]+)['"`]\)* *(@lazy)? *(?:@chunk\(['"`]*([\w-]+)['"`]*\))? *(@lazy)?$/))
+    .filter(c => !!c)
+    .map((c: RegExpMatchArray) => ({
+      literal: c[1],
+      lazy: !!(c[2] || c[4]),
+      chunk: c[3]
+    }))
+
+  if (!commentsAndLiterals.length && !commentOnlyImports.length) {
     this.callback(undefined, source, sourceMap)
     return
   }
 
-  const resourceDir = path.dirname(this.resourcePath)
-  const resolvedResources = await Promise.all(commentsAndLiterals.map(toRequire =>
-    new Promise<{resolve: Resolver.ResolveResult} & typeof toRequire>((resolve, reject) =>
-      this.resolve(resourceDir, toRequire.literal,
-        (err, result, value) => err ? resolve() || this.emitWarning(err.message) :
-        resolve(Object.assign({resolve: value}, toRequire))
-      )
-    )
-  ))
+  const allResources = [...commentsAndLiterals, ...commentOnlyImports]
 
-  const resourceData = resolvedResources.filter(r => !!r).map(toRequire => {
-    if (!toRequire.commentMatch) return toRequire // NOTE: until fixed https://github.com/Microsoft/TypeScript/issues/7657
-    const lazy = (toRequire.commentMatch[1] || toRequire.commentMatch[3] && 'lazy') || ''
-    const chunkName = (toRequire.commentMatch[2] && `name=${toRequire.commentMatch[2]}`) || ''
-    const and = lazy && chunkName && '&'
-    const bundleLoaderPrefix = (lazy || chunkName) ? 'bundle?' : ''
-    const fallbackLoaderQuery = `${bundleLoaderPrefix}${lazy}${and}${chunkName}`
+  // const resolvedResources = await Promise.all(
+  //   allResources.map(toRequire => resolveLiteral(toRequire, this))
+  // )
 
-    return fallbackLoaderQuery ? Object.assign({ fallbackLoaders: [fallbackLoaderQuery] }, toRequire) : toRequire
-  }) as Array<RequireData>
+  const resourceData = await addFallbackLoaders(allResources, this)
 
   log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 
   const requireStrings = await getRequireStrings(resourceData, query.addLoadersCallback, this, query.alwaysUseCommentBundles)
   const inject = requireStrings.map(wrapInRequireInclude).join('\n')
-  appendCode(this, source, inject, sourceMap)
+  appendCodeAndCallback(this, source, inject, sourceMap)
 }
 
 module.exports = loader;

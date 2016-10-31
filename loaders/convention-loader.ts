@@ -3,9 +3,9 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
-import * as debug from 'debug'
 import * as webpack from 'webpack'
-import {appendCode, getRequireStrings, resolveLiteral, wrapInRequireInclude} from './inject-utils'
+import {appendCodeAndCallback, getRequireStrings, resolveLiteral, wrapInRequireInclude} from './inject-utils'
+import * as debug from 'debug'
 const log = debug('convention-loader')
 
 export type ConventionFunction = (fullPath: string, query?: ConventionQuery, loaderInstance?: WebpackLoader) => string | string[] | Promise<string | string[]>
@@ -141,13 +141,13 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
     await actOnConvention(query.convention)
   }
 
-  const resourceDir = path.dirname(this.resourcePath)
-  const relativeRequires = requires.map(r => ({ literal: `./${path.relative(resourceDir, r)}` }))
-
-  if (!relativeRequires.length) {
+  if (!requires.length) {
     this.callback(undefined, source, sourceMap)
     return
   }
+
+  const resourceDir = path.dirname(this.resourcePath)
+  const relativeRequires = requires.map(r => ({ literal: `./${path.relative(resourceDir, r)}` }))
 
   log(`Adding resources to ${this.resourcePath}: ${relativeRequires.map(r => r.literal).join(', ')}`)
 
@@ -157,7 +157,7 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
 
   const inject = requireStrings.map(wrapInRequireInclude).join('\n')
 
-  return appendCode(this, source, inject, sourceMap)
+  return appendCodeAndCallback(this, source, inject, sourceMap)
 }
 
 module.exports = loader;

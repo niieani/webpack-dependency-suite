@@ -8,11 +8,32 @@ import * as htmlLoader from 'html-loader'
 import * as debug from 'debug'
 const log = debug('html-require-loader')
 
+export type SelectorAndAttribute = { selector: string, attribute: string }
+
+export interface HtmlRequireQuery extends AddLoadersQuery {
+  selectorsAndAttributes: Array<SelectorAndAttribute>
+  globReplaceRegex?: RegExp | undefined
+}
+
+const defaults = {
+  selectorsAndAttributes: [
+    // e.g. <require from="./file">
+    // e.g. <require from="bootstrap" lazy bundle="vendor">
+    { selector: 'require', attribute: 'from' },
+    // e.g. <compose view-model="file">
+    { selector: '[view-model]', attribute: 'view-model' },
+    // e.g. <compose view="file">
+    { selector: '[view]', attribute: 'view' },
+  ],
+  // by default glob template string: e.g. '${anything}'
+  globReplaceRegex: /\${.+?}/g
+} as HtmlRequireQuery
+
 async function loader (this: WebpackLoader, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
-  const query = loaderUtils.parseQuery(this.query) as AddLoadersQuery
+  const query = Object.assign({}, defaults, loaderUtils.parseQuery(this.query)) as HtmlRequireQuery
   const source = htmlLoader.bind(this)(pureHtml, sourceMap) as string
 
-  const resources = getTemplateResourcesData(pureHtml)
+  const resources = getTemplateResourcesData(pureHtml, query.selectorsAndAttributes, query.globReplaceRegex)
   if (!resources.length) {
     return source
   }
@@ -28,15 +49,15 @@ async function loader (this: WebpackLoader, pureHtml: string, sourceMap?: Source
   return appendCodeAndCallback(this, source, inject, sourceMap, true)
 }
 
-export const templateStringRegex = /\${.+?}/g
+// export const templateStringRegex = /\${.+?}/g
 
 /**
- * Generates key-value dependency pairs of:
+ * Generates list of dependencies based on the passed in selectors, e.g.:
  * - <require from="paths">
- * - view-model="file"
- * - view="file.html"
+ * - <template view-model="./file"></template>
+ * - <template view="file.html"></template>
  */
-export function getTemplateResourcesData(html: string, useGlobPaths = false) {
+export function getTemplateResourcesData(html: string, selectorsAndAttributes: Array<SelectorAndAttribute>, globRegex: RegExp | undefined) {
   const $ = cheerio.load(html) // { decodeEntities: false }
 
   function extractRequire(context: Cheerio, fromAttribute = 'from') {
@@ -44,9 +65,8 @@ export function getTemplateResourcesData(html: string, useGlobPaths = false) {
     context.each(index => {
       let path: string = context[index].attribs[fromAttribute]
       if (!path) return
-      if (templateStringRegex.test(path)) {
-        if (!useGlobPaths) return
-        path = path.replace(templateStringRegex, `*`)
+      if (globRegex && globRegex.test(path)) {
+        path = path.replace(globRegex, `*`)
       }
       const lazy = context[index].attribs.hasOwnProperty('lazy')
       const chunk: string = context[index].attribs['bundle'] || context[index].attribs['chunk']
@@ -55,16 +75,10 @@ export function getTemplateResourcesData(html: string, useGlobPaths = false) {
     return resources
   }
 
-  const resources = [
-    // e.g. <require from="./file">
-    // e.g. <require from="bootstrap" lazy bundle="vendor">
-    ...extractRequire($('require')),
-    // e.g. <compose view-model="file">
-    ...extractRequire($('[view-model]', 'view-model')),
-    // e.g. <compose view-model="file">
-    ...extractRequire($('[view]', 'view'))
-  ]
+  const resourcesArray = selectorsAndAttributes
+    .map(saa => extractRequire($(saa.selector), saa.attribute))
 
+  const resources = ([] as RequireDataBase[]).concat(...resourcesArray)
   return resources
 }
 

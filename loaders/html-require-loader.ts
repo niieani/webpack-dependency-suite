@@ -7,25 +7,27 @@ import {addFallbackLoaders, getRequireStrings, wrapInRequireInclude, appendCodeA
 import * as debug from 'debug'
 const log = debug('html-require-loader')
 
+const jsonifiedRegex = /^module\.exports *= */
+
 async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMap.RawSourceMap) {
-  const query = loaderUtils.parseQuery(this.query) as {
-    addLoadersCallback?: AddLoadersMethod | undefined
-    alwaysUseCommentBundles?: boolean | undefined
-  }
+  const query = loaderUtils.parseQuery(this.query) as AddLoadersQuery
 
   if (this.cacheable) {
     this.cacheable()
   }
 
-  this.async()
+  if (!jsonifiedRegex.test(source)) {
+    return source
+  }
 
   // assuming HTML is already JSified by html-loader
   const pureHtml = JSON.parse(source.replace(/^module\.exports *= */, '').replace(/;$/, ''))
   const resources = getTemplateResourcesData(pureHtml)
   if (!resources.length) {
-    this.callback(undefined, source, sourceMap)
-    return
+    return source
   }
+
+  this.async()
 
   const resourceData = await addFallbackLoaders(resources, this)
   log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)

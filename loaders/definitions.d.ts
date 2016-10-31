@@ -36,6 +36,8 @@ export interface AddLoadersQuery {
  * @interface WebpackLoader
  */
 
+
+export type LoaderCallback = (error?: Error | undefined | null, code?: string, jsonSourceMap?: SourceMap.RawSourceMap) => void
 export interface WebpackLoader {
   fs: typeof fs & CachedInputFileSystem
 
@@ -68,9 +70,9 @@ export interface WebpackLoader {
   /**
    * Mark the Loader as asynchronous (use together with the callback)
    */
-  async: () => void
+  async: () => LoaderCallback
   cacheable: () => void
-  callback: (error?: Error | undefined | null, code?: string, jsonSourceMap?: SourceMap.RawSourceMap) => void
+  callback: LoaderCallback
   addDependency: Function
   dependency: Function
   addContextDependency: Function

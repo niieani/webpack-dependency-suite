@@ -4,30 +4,18 @@ import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 import * as cheerio from 'cheerio'
 import {addFallbackLoaders, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback} from './inject-utils'
+import * as htmlLoader from 'html-loader'
 import * as debug from 'debug'
 const log = debug('html-require-loader')
 
-const jsonifiedRegex = /^module\.exports *= */
-
-async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMap.RawSourceMap) {
+async function loader (this: WebpackLoader, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
   const query = loaderUtils.parseQuery(this.query) as AddLoadersQuery
+  const source = htmlLoader.bind(this)(pureHtml, sourceMap) as string
 
-  if (this.cacheable) {
-    this.cacheable()
-  }
-
-  if (!jsonifiedRegex.test(source)) {
-    return source
-  }
-
-  // assuming HTML is already JSified by html-loader
-  const pureHtml = JSON.parse(source.replace(/^module\.exports *= */, '').replace(/;$/, ''))
   const resources = getTemplateResourcesData(pureHtml)
   if (!resources.length) {
     return source
   }
-
-  this.async()
 
   const resourceData = await addFallbackLoaders(resources, this)
   log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
@@ -37,7 +25,7 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
   )
 
   const inject = requireStrings.map(wrapInRequireInclude).join('\n')
-  appendCodeAndCallback(this, source, inject, sourceMap)
+  return appendCodeAndCallback(this, source, inject, sourceMap, true)
 }
 
 export const templateStringRegex = /\${.+?}/g

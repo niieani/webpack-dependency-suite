@@ -105,10 +105,6 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
 
   const allResources = [...commentsAndLiterals, ...commentOnlyImports]
 
-  // const resolvedResources = await Promise.all(
-  //   allResources.map(toRequire => resolveLiteral(toRequire, this))
-  // )
-
   const resourceData = await addFallbackLoaders(allResources, this)
 
   log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)

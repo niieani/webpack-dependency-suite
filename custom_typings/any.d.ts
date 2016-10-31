@@ -6,3 +6,4 @@ declare module 'loader-utils' {
   export function parseQuery(query: any): any
   export function getCurrentRequest(webpackLoader)
 }
+declare module 'html-loader'

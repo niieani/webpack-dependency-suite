@@ -7,10 +7,12 @@
       /* @import */ 'module'
       /* @import @lazy @ */ 'module'
   - conventional-include-loader (include related files according to passed in function(fs)) [eg. like-named require loader for .html files]
-  - explicit loader: 
-      adds all dependencies listed in a JSON file to a given, individual file (entry?)
   - template require loader
       <require from="..." lazy bundle="abc"> (and others - configurable?)
+      add ${} globbing
+  - explicit loader: 
+      adds all dependencies listed in a JSON file to a given, individual file (entry?)
+      expose a method to add loaders by configuration
   - relative moduleId loader OR see plugin idea
       sets this._module.id relative to resolve.root config
       optionally drops extension (.js .ts)

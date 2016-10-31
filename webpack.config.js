@@ -22,8 +22,7 @@ module.exports = {
         use: [
           {
             loader: 'html-require-loader'
-          },
-          { loader: 'html' },
+          }
         ]
       },
       {

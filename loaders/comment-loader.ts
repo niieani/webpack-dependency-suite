@@ -1,4 +1,4 @@
-import { WebpackLoader, AddLoadersQuery, Resolver, AddLoadersMethod, RequireData } from './definitions'
+import { AddLoadersQuery, AddLoadersMethod, RequireData } from './definitions'
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
@@ -6,7 +6,7 @@ import * as acorn from 'acorn'
 import * as walk from 'acorn/dist/walk'
 import * as ESTree from 'estree'
 import * as debug from 'debug'
-import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveLiteral, addFallbackLoaders} from './inject-utils'
+import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveLiteral, addFallbackLoaders, SimpleDependency} from './inject-utils'
 
 const log = debug('comment-loader')
 
@@ -33,7 +33,7 @@ export interface CommentLoaderQuery extends AddLoadersQuery {
   alwaysUseCommentBundles?: boolean | undefined
 }
 
-async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMap.RawSourceMap) {
+async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   const query = loaderUtils.parseQuery(this.query) as CommentLoaderQuery
 
   if (this.cacheable) {
@@ -110,6 +110,7 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
   log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 
   const requireStrings = await getRequireStrings(resourceData, query.addLoadersCallback, this, query.alwaysUseCommentBundles)
+
   const inject = requireStrings.map(wrapInRequireInclude).join('\n')
   appendCodeAndCallback(this, source, inject, sourceMap)
 }

@@ -1,68 +1,21 @@
-import { WebpackLoader, CachedInputFileSystem, AddLoadersQuery, PathWithLoaders } from './definitions'
+import { AddLoadersQuery, PathWithLoaders } from './definitions'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 import * as webpack from 'webpack'
-import {appendCodeAndCallback, getRequireStrings, resolveLiteral, wrapInRequireInclude} from './inject-utils'
+import {appendCodeAndCallback, getRequireStrings, resolveLiteral, wrapInRequireInclude, SimpleDependency} from './inject-utils'
+import {getFilesInDir} from './utils'
 import * as debug from 'debug'
 const log = debug('convention-loader')
 
-export type ConventionFunction = (fullPath: string, query?: ConventionQuery, loaderInstance?: WebpackLoader) => string | string[] | Promise<string | string[]>
+export type ConventionFunction = (fullPath: string, query?: ConventionQuery, loaderInstance?: Webpack.Core.LoaderContext) => string | string[] | Promise<string | string[]>
 export type Convention = 'extension-swap' | ConventionFunction
 
 export interface ConventionQuery extends AddLoadersQuery {
   convention: Convention | Array<Convention>
   extension?: string | string[]
   [customSetting: string]: any
-}
-
-async function getFilesInDir(directory: string, {
-      skipHidden = true, recursive = false, regexFilter = undefined, emitWarning = console.warn.bind(console), emitError = console.error.bind(console), fileSystem = fs
-    }: {
-      skipHidden?: boolean, returnFullPath?: boolean, recursive?: boolean, regexFilter?: RegExp, emitWarning?: (warn: string) => void, emitError?: (warn: string) => void, fileSystem?: { readdir: Function, stat: Function }
-    } = {}
-  ): Promise<Array<{ filePath: string, stat: fs.Stats }>> {
-
-  if (!directory) {
-    emitError(`No directory supplied`)
-    return []
-  }
-
-  let files = await new Promise<string[]>((resolve, reject) =>
-    fileSystem.readdir(directory, (err, value) => err ? resolve([]) || emitWarning(`Error when trying to load ${directory}: ${err.message}`) : resolve(value)))
-
-  files = files.map(filePath => path.join(directory, filePath))
-
-  let stats = (await Promise.all(
-    files
-      .map(filePath => new Promise<{ filePath: string, stat: fs.Stats }>((resolve, reject) =>
-        fileSystem.stat(filePath, (err, stat) => err ? resolve({filePath, stat}) : resolve({filePath, stat})))
-      )
-  )).filter(stat => !!stat.stat)
-
-  if (regexFilter || skipHidden) {
-    stats = stats
-      .filter(file =>
-        !(regexFilter && file.stat.isFile() && !file.filePath.match(regexFilter)) &&
-        !(skipHidden && path.basename(file.filePath).indexOf('.') === 0)
-      )
-  }
-
-  if (!recursive)
-     return stats.filter(file => file.stat.isFile())
-
-  const subDirectoryStats = await Promise.all(
-    stats.filter(file => file.stat.isDirectory()).map(
-      file => getFilesInDir(file.filePath, {
-        skipHidden, recursive, regexFilter, emitWarning, emitError, fileSystem
-      })
-    )
-  )
-
-  return stats.filter(file => file.stat.isFile()).concat(
-    ...subDirectoryStats
-  )
 }
 
 const conventions: { [convention: string]: ConventionFunction } = {
@@ -79,7 +32,7 @@ const conventions: { [convention: string]: ConventionFunction } = {
     return extensions.map(extension => path.join(basepath, noExtension + extension))
   },
 
-  async 'all-files-matching-regex'(fullPath: string, query: ConventionQuery & {regex: RegExp, directory: string}, loaderInstance: WebpackLoader) {
+  async 'all-files-matching-regex'(fullPath: string, query: ConventionQuery & {regex: RegExp, directory: string}, loaderInstance: Webpack.Core.LoaderContext) {
     const files = await getFilesInDir(query.directory, {
       regexFilter: query.regex,
       emitWarning: loaderInstance.emitWarning.bind(loaderInstance),
@@ -91,10 +44,14 @@ const conventions: { [convention: string]: ConventionFunction } = {
     return files
       .filter(file => file.filePath !== loaderInstance.resourcePath)
       .map(file => file.filePath)
-  }
+  },
+
+  async 'list-based'(fullPath: string, query: ConventionQuery & { packageProperty: string }, loaderInstance: Webpack.Core.LoaderContext) {
+
+  },
 }
 
-async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMap.RawSourceMap) {
+async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   this.async()
 
   const query = loaderUtils.parseQuery(this.query) as ConventionQuery
@@ -104,7 +61,8 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
   }
 
   if (!query || !query.convention) {
-    this.callback(new Error(`No convention defined`))
+    this.emitError(`No convention defined, passing through`)
+    this.callback(undefined, source, sourceMap)
     return
   }
 
@@ -156,7 +114,6 @@ async function loader (this: WebpackLoader, source: string, sourceMap?: SourceMa
   )
 
   const inject = requireStrings.map(wrapInRequireInclude).join('\n')
-
   return appendCodeAndCallback(this, source, inject, sourceMap)
 }
 

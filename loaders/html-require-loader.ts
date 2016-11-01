@@ -1,9 +1,9 @@
-import { WebpackLoader, AddLoadersQuery, Resolver, AddLoadersMethod, RequireData, RequireDataBase } from './definitions'
+import { AddLoadersQuery, AddLoadersMethod, RequireData, RequireDataBase } from './definitions'
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 import * as cheerio from 'cheerio'
-import {addFallbackLoaders, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback} from './inject-utils'
+import {addFallbackLoaders, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, SimpleDependency} from './inject-utils'
 import * as htmlLoader from 'html-loader'
 import * as debug from 'debug'
 const log = debug('html-require-loader')
@@ -29,7 +29,7 @@ const defaults = {
   globReplaceRegex: /\${.+?}/g
 } as HtmlRequireQuery
 
-async function loader (this: WebpackLoader, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
+async function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
   const query = Object.assign({}, defaults, loaderUtils.parseQuery(this.query)) as HtmlRequireQuery
   const source = htmlLoader.bind(this)(pureHtml, sourceMap) as string
 
@@ -48,8 +48,6 @@ async function loader (this: WebpackLoader, pureHtml: string, sourceMap?: Source
   const inject = requireStrings.map(wrapInRequireInclude).join('\n')
   return appendCodeAndCallback(this, source, inject, sourceMap, true)
 }
-
-// export const templateStringRegex = /\${.+?}/g
 
 /**
  * Generates list of dependencies based on the passed in selectors, e.g.:

@@ -9,10 +9,19 @@
   - conventional-include-loader (include related files according to passed in function(fs)) [eg. like-named require loader for .html files]
   - template require loader
       <require from="..." lazy bundle="abc"> (and others - configurable?)
-      add ${} globbing
+      add ${} globbing by:
+        - splitting path by '/'
+        - find first component where * is
+        - resolve previous one || contextDir
+        - get all files recursively
+        - split their paths '/'
+        - add all that match the regex 
   - explicit loader: 
       adds all dependencies listed in a JSON file to a given, individual file (entry?)
-      expose a method to add loaders by configuration
+      expose a method to check if a path should override/add loaders by query configuration
+  - fork (or require) bundle loader https://github.com/webpack/bundle-loader/blob/master/index.js 
+    and add a parameter, e.g. module.exports.SIGNIFIER = true
+    so that its clear for the aurelia-loader its an unresolved method
   - relative moduleId loader OR see plugin idea
       sets this._module.id relative to resolve.root config
       optionally drops extension (.js .ts)

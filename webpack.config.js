@@ -28,12 +28,27 @@ module.exports = {
       {
         test: /\.js$/,
         include: [path.resolve('app/main.js')],
-        loader: 'convention-loader',
-        query: {
-          convention: 'all-files-matching-regex',
-          regex: /\.js$/,
-          directory: path.resolve('app-extra')
-        }
+        use: [
+          {
+            loader: 'convention-loader',
+            query: {
+              convention: 'all-files-matching-regex',
+              regex: /\.js$/,
+              directory: path.resolve('app-extra')
+            }
+          },
+        ],
+      },
+      {
+        test: /\.js$/,
+        include: [path.resolve('app')],
+        use: [
+          {
+            loader: 'list-based-require-loader',
+            query: {
+            }
+          }
+        ],
       },
       // We are chianing the custom loader to babel loader.
       // Purely optional but know that the `first` loader in the chain (babel in this case)
@@ -78,6 +93,7 @@ module.exports = {
       'comment-loader': require.resolve('./loaders/comment-loader'),
       'convention-loader': require.resolve('./loaders/convention-loader'),
       'html-require-loader': require.resolve('./loaders/html-require-loader'),
+      'list-based-require-loader': require.resolve('./loaders/list-based-require-loader'),
     },
     extensions: [".webpack-loader.js", ".web-loader.js", ".loader.js", ".js", ".ts"]
   },

@@ -31,20 +31,21 @@
     "rootDir": "./app/"
   },
   "dependencies": {
-    "@types/cheerio": "^0.17.31",
     "acorn": "^4.0.3",
     "cheerio": "^0.22.0",
     "debug": "^2.2.0",
     "html-loader": "^0.4.4",
     "loader-utils": "^0.2.16",
-    "source-map": "^0.5.6"
-  },
-  "devDependencies": {
+    "lodash": "^4.16.5",
+    "source-map": "^0.5.6",
+    "@types/lodash": "^4.14.38",
     "@types/acorn": "^1.0.31",
     "@types/cheerio": "^0.17.31",
     "@types/debug": "^0.0.29",
     "@types/node": "^6.0.46",
-    "@types/webpack": "^1.12.35",
+    "@types/webpack": "^1.12.35"
+  },
+  "devDependencies": {
     "babel-core": "^6.18.0",
     "babel-eslint": "^7.1.0",
     "babel-loader": "^6.2.7",

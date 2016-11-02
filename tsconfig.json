@@ -5,6 +5,7 @@
     "noImplicitAny": false,
     "inlineSourceMap": true,
     "allowJs": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "outDir": "dist"
   }
 }

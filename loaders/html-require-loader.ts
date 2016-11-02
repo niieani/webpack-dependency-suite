@@ -3,7 +3,7 @@ import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 import * as cheerio from 'cheerio'
-import {addFallbackLoaders, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, SimpleDependency} from './inject-utils'
+import {addBundleLoader, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, SimpleDependency} from './inject-utils'
 import * as htmlLoader from 'html-loader'
 import * as debug from 'debug'
 const log = debug('html-require-loader')
@@ -38,7 +38,7 @@ async function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourc
     return source
   }
 
-  const resourceData = await addFallbackLoaders(resources, this)
+  const resourceData = await addBundleLoader(resources, this)
   log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 
   const requireStrings = await getRequireStrings(
@@ -67,7 +67,7 @@ export function getTemplateResourcesData(html: string, selectorsAndAttributes: A
         path = path.replace(globRegex, `*`)
       }
       const lazy = context[index].attribs.hasOwnProperty('lazy')
-      const chunk: string = context[index].attribs['bundle'] || context[index].attribs['chunk']
+      const chunk = (context[index].attribs['bundle'] || context[index].attribs['chunk']) as string
       resources.push({ literal: path, lazy, chunk })
     })
     return resources

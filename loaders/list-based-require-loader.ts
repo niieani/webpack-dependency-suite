@@ -49,11 +49,11 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
   const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
     this.resolve(this.context, this.currentRequest, (err, result, value) => err ? resolve() || this.emitWarning(`Error resolving: ${this.currentRequest}`) : resolve(value)));
 
+  // const allResources = getResourcesFromList(resolve.descriptionFileData, query.packagePropertyPath)
   const resources = get(resolve.descriptionFileData, query.packagePropertyPath, [] as Array<ResourcesInput | string>)
 
   const allResources = [] as Array<Resources>
 
-  // if (packageJson.aurelia && packageJson.aurelia.build && packageJson.aurelia.build.resources) {}
   resources.forEach(input => {
     const r = input instanceof Object && !Array.isArray(input) ? input as ResourcesInput : { path: input }
     const paths = Array.isArray(r.path) ? r.path : [r.path]
@@ -62,7 +62,7 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
     )
   })
 
-  const resourceData = await addBundleLoader(allResources, this)
+  const resourceData = await addBundleLoader(allResources, this, 'loaders')
 
   log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 
@@ -72,8 +72,31 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
   appendCodeAndCallback(this, source, inject, sourceMap)
 }
 
+export function getResourcesFromList(json: Object, propertyPath: string) {
+  const resources = get(json, propertyPath, [] as Array<ResourcesInput | string>)
+
+  const allResources = [] as Array<Resources>
+
+  resources.forEach(input => {
+    const r = input instanceof Object && !Array.isArray(input) ? input as ResourcesInput : { path: input }
+    const paths = Array.isArray(r.path) ? r.path : [r.path]
+    paths.forEach(
+      literal => allResources.push({ literal, lazy: r.lazy || false, chunk: r.bundle || r.chunk })
+    )
+  })
+
+  return allResources
+}
+
 async function addLoadersMethod(files: Array<RequireData>, loaderInstance: Webpack.Core.LoaderContext): Promise<Array<PathWithLoaders>> {
   // files[0].
+  /**
+   * 1. load MAIN package.json
+   * 2. get the aurelia resources: packageJson.aurelia && packageJson.aurelia.build && packageJson.aurelia.build.resources
+   * 3. glob all resources
+   * 4. resolve each resource in the context of MAIN package.json
+   * 5. foreach files, match with resolved resources and replace loaders or return what was there
+   */
 }
 
 module.exports = loader

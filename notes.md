@@ -21,7 +21,8 @@
       expose a method to check if a path should override/add loaders by query configuration
   - fork (or require) bundle loader https://github.com/webpack/bundle-loader/blob/master/index.js 
     and add a parameter, e.g. module.exports.SIGNIFIER = true
-    so that its clear for the aurelia-loader its an unresolved method
+    so that its clear to the aurelia-loader its an unresolved method
+  - add main package.json to dependencies with the loader so webpack reloads when it changes
   - relative moduleId loader OR see plugin idea
       sets this._module.id relative to resolve.root config
       optionally drops extension (.js .ts)

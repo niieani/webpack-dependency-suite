@@ -6,7 +6,7 @@ import * as acorn from 'acorn'
 import * as walk from 'acorn/dist/walk'
 import * as ESTree from 'estree'
 import * as debug from 'debug'
-import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveLiteral, addFallbackLoaders, SimpleDependency} from './inject-utils'
+import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveLiteral, addBundleLoader, SimpleDependency} from './inject-utils'
 
 const log = debug('comment-loader')
 
@@ -105,7 +105,7 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
 
   const allResources = [...commentsAndLiterals, ...commentOnlyImports]
 
-  const resourceData = await addFallbackLoaders(allResources, this)
+  const resourceData = await addBundleLoader(allResources, this)
 
   log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 

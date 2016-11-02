@@ -11,7 +11,6 @@ export interface PathWithLoaders {
    * (if want to cancel out all previous loaders, use '!!' at the beginning)
    */
   loaders?: Array<string> | undefined
-  literal?: string | undefined
 }
 
 export type AddLoadersMethod = (files: Array<RequireData>, loaderInstance?: Webpack.Core.LoaderContext) => Array<PathWithLoaders> | Promise<Array<PathWithLoaders>>

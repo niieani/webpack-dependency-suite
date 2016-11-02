@@ -2,7 +2,10 @@ import { AddLoadersMethod, PathWithLoaders, RequireData, RequireDataBase } from 
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
+import { getFilesInDir, resolveAllAndConcat, cacheInvalidationDebounce } from './utils'
 import ModuleDependency = require('webpack/lib/dependencies/ModuleDependency')
+import escapeStringForRegex = require('escape-string-regexp')
+import {memoize} from 'lodash'
 
 export function appendCodeAndCallback(loader: Webpack.Core.LoaderContext, source: string, inject: string, sourceMap?: SourceMap.RawSourceMap, synchronousIfPossible = false) {
   inject += (!source.trim().endsWith(';')) ? ';\n' : '\n'
@@ -34,31 +37,114 @@ export function appendCodeAndCallback(loader: Webpack.Core.LoaderContext, source
   }
 }
 
+export async function expandGlobBase(literal: string, loaderInstance: Webpack.Core.LoaderContext) {
+  const pathBits = literal.split(`/`)
+  const literalIsRelative = literal[0] === '.'
+  let possibleRoots = loaderInstance.options.resolve.modules.filter((m: string) => m !== 'node_modules' /* && m[0] !== '/' -- *nix only */) as Array<string>
+
+  if (!literalIsRelative) {
+    let moduleName = pathBits[0].startsWith(`@`) ? pathBits.slice(0, 2).join(`/`) : pathBits[0]
+    if (!moduleName.includes(`*`)) {
+      let resolved = await resolveLiteral(Object.assign({ literal: moduleName }), loaderInstance)
+      let root = resolved.resolve && resolved.resolve.descriptionFileRoot
+      if (root) {
+        possibleRoots = [root]
+      }
+    }
+  } else {
+    const nextGlobAtIndex = pathBits.findIndex(pb => pb.includes(`*`))
+    const relativePathUntilFirstGlob = pathBits.slice(0, nextGlobAtIndex).join(`/`)
+    possibleRoots = [path.join(path.dirname(loaderInstance.resourcePath), relativePathUntilFirstGlob)]
+  }
+
+  const possiblePaths = await resolveAllAndConcat(
+    possibleRoots.map(async directory => await getFilesInDir(directory, {
+      recursive: true, emitWarning: loaderInstance.emitWarning, emitError: loaderInstance.emitError,
+      fileSystem: loaderInstance.fs, skipHidden: true
+    }))
+  )
+
+  let nonRelativePath = path.join(literal) // removes ./ or from the path
+  while (nonRelativePath.startsWith('../')) {
+    nonRelativePath = nonRelativePath.slice(3)
+  }
+  const globRegexString = escapeStringForRegex(nonRelativePath).replace(/\//g, '[\\/]+').replace(/\\\*/g, '\.*?')
+  const globRegex = new RegExp(globRegexString)
+  const correctPaths = possiblePaths.filter(p => p.stat.isFile() && globRegex.test(p.filePath))
+  return correctPaths
+  // return correctPaths.map(p => ({ literal: p.filePath }))
+/*
+  return resolveAllAndConcat<{
+    resolve: EnhancedResolve.ResolveResult | undefined;
+    literal: string;
+  }>(
+    correctPaths.map(
+      async p => await resolveLiteral({ literal: p.filePath }, loaderInstance)
+    )
+  )
+*/
+  // return Object.assign({}, r, { literal })
+  // let resolved = await resolveLiteral(Object.assign({}, r, { literal: pathUntilFirstGlob }), loaderInstance)
+  // resolved.resolve.path
+  // for (let pathBit of pathBits) {
+  //   if (!pathBit.includes(`*`)) {
+  //     pathUntilFirstGlob += `${pathBit}/`
+  //   }
+  // }
+  // let pathBit = pathBits.shift()
+  // while (!pathBit.includes(`*`)) {
+  //   pathUntilFirstGlob += `${pathBit}/`
+  //   pathBit = pathBits.shift()
+  // }
+}
+
+const expandGlob = memoize(expandGlobBase, (literal: string, loaderInstance: Webpack.Core.LoaderContext) => {
+  /** valid for 10 seconds for the same literal and resoucePath */
+  const cacheKey = `${literal}::${path.dirname(loaderInstance.resourcePath)}`
+  // invalidate every 10 seconds based on each unique Webpack compilation
+  cacheInvalidationDebounce(cacheKey, expandGlob.cache, loaderInstance._compilation)
+  return cacheKey
+})
+
+export async function expandAllRequiresForGlob<T extends { literal: string }>(requires: Array<T>, loaderInstance: Webpack.Core.LoaderContext) {
+  const needDeglobbing = requires.filter(r => r.literal.includes(`*`))
+  const deglobbed = requires.filter(r => !r.literal.includes(`*`))
+  return deglobbed.concat(await resolveAllAndConcat(needDeglobbing.map(async r =>
+    (await expandGlob(r.literal, loaderInstance))
+      .map(correctPath => Object.assign({}, r, { literal: correctPath }))
+  )) as T[])
+}
+
 export async function getRequireStrings(maybeResolvedRequires: Array<RequireData | { literal: string, resolve?: undefined }>, addLoadersMethod: AddLoadersMethod | undefined, loaderInstance: Webpack.Core.LoaderContext, forceFallbackLoaders = false): Promise<Array<string>> {
   const resourceDir = path.dirname(loaderInstance.resourcePath)
+
+  maybeResolvedRequires = await expandAllRequiresForGlob(maybeResolvedRequires, loaderInstance)
 
   const requires = await Promise.all(maybeResolvedRequires.map(
     async r => !r.resolve ? await resolveLiteral(r, loaderInstance) : r
   )) as Array<RequireData>
 
-  let pathsAndLoaders: Array<PathWithLoaders & {removed?: boolean}>
+  type PathsAndLoadersWithLiterals = PathWithLoaders & {removed?: boolean, literal: string}
+  let pathsAndLoaders: Array<PathsAndLoadersWithLiterals>
 
   if (typeof addLoadersMethod === 'function') {
     const maybePromise = addLoadersMethod(requires, loaderInstance)
-    pathsAndLoaders = (maybePromise as Promise<Array<PathWithLoaders>>).then ? await maybePromise : maybePromise as Array<PathWithLoaders>
-    pathsAndLoaders = pathsAndLoaders.map(p => {
+    const pathsAndLoadersReturnValue = (maybePromise as Promise<Array<PathWithLoaders>>).then ? await maybePromise : maybePromise as Array<PathWithLoaders>
+    pathsAndLoaders = pathsAndLoadersReturnValue.map(p => {
       const rq = requires.find(r => r.resolve.path === p.path)
-      if (!rq) return Object.assign(p, {removed: true})
-      return Object.assign(p, { loaders: (p.loaders && !forceFallbackLoaders) ? p.loaders : (rq.fallbackLoaders || []), literal: rq.literal })
-    }).filter(r => !r.removed)
+      if (!rq) return Object.assign(p, {removed: true, literal: undefined})
+      return Object.assign(p, { loaders: (p.loaders && !forceFallbackLoaders) ? p.loaders : (rq.loaders || rq.fallbackLoaders || []), literal: rq.literal, removed: false })
+    }).filter(r => !r.removed) as Array<PathsAndLoadersWithLiterals>
   } else {
     pathsAndLoaders = requires.map(r => ({ literal: r.literal, loaders: r.loaders || r.fallbackLoaders || [], path: r.resolve.path }))
   }
 
   return pathsAndLoaders.map(p =>
     (p.loaders && p.loaders.length) ?
-      (`!${p.loaders.join('!')}!` + (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)) :
-      (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)
+      `!${p.loaders.join('!')}!${p.literal}` :
+      p.literal
+      // (`!${p.loaders.join('!')}!` + (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)) :
+      // (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)
   )
 }
 
@@ -67,10 +153,10 @@ export function wrapInRequireInclude(toRequire: string) {
 }
 
 export function resolveLiteral<T extends { literal: string }>(toRequire: T, loaderInstance: Webpack.Core.LoaderContext) {
-  const resourceDir = path.dirname(loaderInstance.resourcePath)
-  return new Promise<{resolve: EnhancedResolve.ResolveResult} & T>((resolve, reject) =>
+  const resourceDir = path.dirname(loaderInstance.resourcePath) // TODO: could this simply be loaderInstance.context ?
+  return new Promise<{resolve: EnhancedResolve.ResolveResult | undefined} & T>((resolve, reject) =>
     loaderInstance.resolve(resourceDir, toRequire.literal,
-      (err, result, value) => err ? resolve() || loaderInstance.emitWarning(err.message) :
+      (err, result, value) => err ? resolve(Object.assign({resolve: value}, toRequire)) || loaderInstance.emitWarning(err.message) :
       resolve(Object.assign({resolve: value}, toRequire))
     )
   )

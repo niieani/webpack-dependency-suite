@@ -7,9 +7,24 @@
     "dev": "webpack-dev-server --inline --content-base build/",
     "build": "rimraf ./dist && webpack --config webpack.config.js",
     "lint": "eslint .",
+    "test": "jest",
     "test:unit": "jest",
     "test:e2e": "jasmine e2e.spec.js",
     "debug": "node --inspect --debug-brk ./node_modules/webpack/bin/webpack.js --config webpack.config.js --watch"
+  },
+  "_test": {
+    "resources": [
+      "resources/hello",
+      {
+        "path": "resources/double",
+        "lazy": true,
+        "chunk": "double"
+      },
+      [
+        "resources/triple"
+      ],
+      "resources/glo*b/test-*.js"
+    ]
   },
   "repository": {
     "type": "git",
@@ -23,18 +38,26 @@
     "developer"
   ],
   "author": {
-    "name": "Sean Larkin",
-    "email": "sean.larkin@cuw.edu"
+    "name": "Bazyli Brzóska",
+    "email": "bazyli.brzoska@gmail.com"
   },
   "license": "MIT",
   "jest": {
-    "rootDir": "./app/"
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "<rootDir>/preprocessor.js"
+    },
+    "testRegex": "\\.spec\\.(ts|tsx)$"
   },
   "dependencies": {
     "@types/acorn": "^1.0.31",
     "@types/cheerio": "^0.17.31",
     "@types/debug": "^0.0.29",
-    "@types/escape-string-regexp": "0.0.30",
+    "@types/escape-string-regexp": "^0.0.30",
     "@types/lodash": "^4.14.38",
     "@types/node": "^6.0.46",
     "@types/webpack": "^1.12.35",
@@ -43,12 +66,12 @@
     "debug": "^2.2.0",
     "escape-string-regexp": "^1.0.5",
     "html-loader": "^0.4.4",
+    "jest": "^16.1.0-alpha",
     "loader-utils": "^0.2.16",
     "lodash": "^4.16.5",
     "source-map": "^0.5.6"
   },
   "devDependencies": {
-    "@types/escape-string-regexp": "^0.0.30",
     "@types/lodash": "^4.14.38",
     "babel-core": "^6.18.0",
     "babel-eslint": "^7.1.0",
@@ -57,7 +80,7 @@
     "babel-preset-latest": "^6.16.0",
     "babili": "^0.0.7",
     "babili-webpack-plugin": "^0.0.6",
-    "chromedriver": "2.24.1",
+    "chromedriver": "^2.24.1",
     "enhanced-resolve": "^2.3.0",
     "eslint": "^3.9.0",
     "file-loader": "^0.9.0",
@@ -65,9 +88,9 @@
     "html-webpack-plugin": "^2.24.0",
     "http-server": "^0.9.0",
     "jasmine": "2.5.2",
-    "jest": "16.0.2",
+    "jest": "^16.0.2",
     "rimraf": "^2.5.4",
-    "selenium-webdriver": "3.0.0-beta-3",
+    "selenium-webdriver": ">=3.0.0-beta-3",
     "ts-node": "^1.6.1",
     "typescript": "^2.0.6",
     "webpack": "^2.1.0-beta.25",

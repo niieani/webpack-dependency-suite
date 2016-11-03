@@ -2,10 +2,11 @@ import { AddLoadersMethod, PathWithLoaders, RequireData, RequireDataBase } from 
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
-import { getFilesInDir, resolveAllAndConcat, cacheInvalidationDebounce } from './utils'
+import { getFilesInDir, concatPromiseResults, cacheInvalidationDebounce } from './utils'
 import ModuleDependency = require('webpack/lib/dependencies/ModuleDependency')
 import escapeStringForRegex = require('escape-string-regexp')
 import {memoize} from 'lodash'
+import * as debug from 'debug'
 
 export function appendCodeAndCallback(loader: Webpack.Core.LoaderContext, source: string, inject: string, sourceMap?: SourceMap.RawSourceMap, synchronousIfPossible = false) {
   inject += (!source.trim().endsWith(';')) ? ';\n' : '\n'
@@ -43,10 +44,10 @@ export async function expandGlobBase(literal: string, loaderInstance: Webpack.Co
   let possibleRoots = loaderInstance.options.resolve.modules.filter((m: string) => m !== 'node_modules' /* && m[0] !== '/' -- *nix only */) as Array<string>
 
   if (!literalIsRelative) {
-    let moduleName = pathBits[0].startsWith(`@`) ? pathBits.slice(0, 2).join(`/`) : pathBits[0]
+    const moduleName = pathBits[0].startsWith(`@`) ? pathBits.slice(0, 2).join(`/`) : pathBits[0]
     if (!moduleName.includes(`*`)) {
-      let resolved = await resolveLiteral(Object.assign({ literal: moduleName }), loaderInstance)
-      let root = resolved.resolve && resolved.resolve.descriptionFileRoot
+      const resolved = await resolveLiteral(Object.assign({ literal: moduleName }), loaderInstance, undefined, false /* do not emit warnings for bad resolves here */)
+      const root = resolved.resolve && resolved.resolve.descriptionFileRoot
       if (root) {
         possibleRoots = [root]
       }
@@ -57,7 +58,7 @@ export async function expandGlobBase(literal: string, loaderInstance: Webpack.Co
     possibleRoots = [path.join(path.dirname(loaderInstance.resourcePath), relativePathUntilFirstGlob)]
   }
 
-  const possiblePaths = await resolveAllAndConcat(
+  const possiblePaths = await concatPromiseResults(
     possibleRoots.map(async directory => await getFilesInDir(directory, {
       recursive: true, emitWarning: loaderInstance.emitWarning, emitError: loaderInstance.emitError,
       fileSystem: loaderInstance.fs, skipHidden: true
@@ -68,11 +69,17 @@ export async function expandGlobBase(literal: string, loaderInstance: Webpack.Co
   while (nonRelativePath.startsWith('../')) {
     nonRelativePath = nonRelativePath.slice(3)
   }
-  const globRegexString = escapeStringForRegex(nonRelativePath).replace(/\//g, '[\\/]+').replace(/\\\*/g, '\.*?')
+  // test case: escape('werwer/**/werwer/*.html').replace(/\//g, '[\\/]+').replace(/\\\*\\\*/g, '\.*?').replace(/\\\*/g, '[^/\\\\]*?')
+  const globRegexString = escapeStringForRegex(nonRelativePath)
+    .replace(/\//g, '[\\/]+') // accept Windows and Unix slashes
+    .replace(/\\\*\\\*/g, '\.*?') // multi glob * => any number of subdirectories
+    .replace(/\\\*/g, '[^/\\\\]*?') // single glob * => one directory (stops at first slash/backslash)
   const globRegex = new RegExp(globRegexString)
   const correctPaths = possiblePaths.filter(p => p.stat.isFile() && globRegex.test(p.filePath))
-  return correctPaths
+  // return correctPaths
   // return correctPaths.map(p => ({ literal: p.filePath }))
+  return correctPaths.map(p => p.filePath)
+
 /*
   return resolveAllAndConcat<{
     resolve: EnhancedResolve.ResolveResult | undefined;
@@ -109,17 +116,13 @@ const expandGlob = memoize(expandGlobBase, (literal: string, loaderInstance: Web
 export async function expandAllRequiresForGlob<T extends { literal: string }>(requires: Array<T>, loaderInstance: Webpack.Core.LoaderContext) {
   const needDeglobbing = requires.filter(r => r.literal.includes(`*`))
   const deglobbed = requires.filter(r => !r.literal.includes(`*`))
-  return deglobbed.concat(await resolveAllAndConcat(needDeglobbing.map(async r =>
+  return deglobbed.concat(await concatPromiseResults(needDeglobbing.map(async r =>
     (await expandGlob(r.literal, loaderInstance))
-      .map(correctPath => Object.assign({}, r, { literal: correctPath }))
-  )) as T[])
+      .map(correctPath => Object.assign({}, r, { literal: `./${path.relative(path.dirname(loaderInstance.resourcePath), correctPath)}` }))
+  )))
 }
 
 export async function getRequireStrings(maybeResolvedRequires: Array<RequireData | { literal: string, resolve?: undefined }>, addLoadersMethod: AddLoadersMethod | undefined, loaderInstance: Webpack.Core.LoaderContext, forceFallbackLoaders = false): Promise<Array<string>> {
-  const resourceDir = path.dirname(loaderInstance.resourcePath)
-
-  maybeResolvedRequires = await expandAllRequiresForGlob(maybeResolvedRequires, loaderInstance)
-
   const requires = await Promise.all(maybeResolvedRequires.map(
     async r => !r.resolve ? await resolveLiteral(r, loaderInstance) : r
   )) as Array<RequireData>
@@ -139,6 +142,7 @@ export async function getRequireStrings(maybeResolvedRequires: Array<RequireData
     pathsAndLoaders = requires.map(r => ({ literal: r.literal, loaders: r.loaders || r.fallbackLoaders || [], path: r.resolve.path }))
   }
 
+  // const resourceDir = path.dirname(loaderInstance.resourcePath)
   return pathsAndLoaders.map(p =>
     (p.loaders && p.loaders.length) ?
       `!${p.loaders.join('!')}!${p.literal}` :
@@ -152,18 +156,19 @@ export function wrapInRequireInclude(toRequire: string) {
   return `require.include('${toRequire}');`
 }
 
-export function resolveLiteral<T extends { literal: string }>(toRequire: T, loaderInstance: Webpack.Core.LoaderContext) {
-  const resourceDir = path.dirname(loaderInstance.resourcePath) // TODO: could this simply be loaderInstance.context ?
+// TODO: memoize:
+export function resolveLiteral<T extends { literal: string }>(toRequire: T, loaderInstance: Webpack.Core.LoaderContext, contextPath = path.dirname(loaderInstance.resourcePath) /* TODO: could this simply be loaderInstance.context ? */, sendWarning = true) {
+  debug('resolve')(`Resolving: ${toRequire.literal}`)
   return new Promise<{resolve: EnhancedResolve.ResolveResult | undefined} & T>((resolve, reject) =>
-    loaderInstance.resolve(resourceDir, toRequire.literal,
-      (err, result, value) => err ? resolve(Object.assign({resolve: value}, toRequire)) || loaderInstance.emitWarning(err.message) :
+    loaderInstance.resolve(contextPath, toRequire.literal,
+      (err, result, value) => err ? resolve(Object.assign({resolve: value}, toRequire)) || (sendWarning && loaderInstance.emitWarning(err.message)) :
       resolve(Object.assign({resolve: value}, toRequire))
     )
   )
 }
 
-export function addBundleLoader(resolvedResources: Array<RequireDataBase>, loaderInstance: Webpack.Core.LoaderContext, property = 'fallbackLoaders') {
-  return resolvedResources.map(toRequire => {
+export function addBundleLoader<T extends RequireDataBase>(resources: Array<T>, loaderInstance: Webpack.Core.LoaderContext, property = 'fallbackLoaders') {
+  return resources.map(toRequire => {
     const lazy = toRequire.lazy && 'lazy' || ''
     const chunkName = (toRequire.chunk && `name=${toRequire.chunk}`) || ''
     const and = lazy && chunkName && '&' || ''
@@ -171,7 +176,7 @@ export function addBundleLoader(resolvedResources: Array<RequireDataBase>, loade
     const bundleLoaderQuery = `${bundleLoaderPrefix}${lazy}${and}${chunkName}`
 
     return bundleLoaderQuery ? Object.assign({ [property]: [bundleLoaderQuery] }, toRequire) : toRequire
-  }) as Array<RequireData>
+  }) as Array<T & { loaders?: Array<string>, fallbackLoaders?: Array<string> }>
 }
 
 // TODO: use custom ModuleDependency instead of injecting code

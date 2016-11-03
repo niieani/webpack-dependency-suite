@@ -6,7 +6,7 @@ import * as acorn from 'acorn'
 import * as walk from 'acorn/dist/walk'
 import * as ESTree from 'estree'
 import * as debug from 'debug'
-import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveLiteral, addBundleLoader, SimpleDependency} from './inject-utils'
+import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveLiteral, addBundleLoader, SimpleDependency, expandAllRequiresForGlob} from './inject-utils'
 
 const log = debug('comment-loader')
 
@@ -30,7 +30,8 @@ function findLiteralNodesAfterBlockComment(ast: ESTree.Program, comments: Array<
 }
 
 export interface CommentLoaderQuery extends AddLoadersQuery {
-  alwaysUseCommentBundles?: boolean | undefined
+  alwaysUseCommentBundles?: boolean
+  enableGlobbing?: boolean
 }
 
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
@@ -105,14 +106,25 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
 
   const allResources = [...commentsAndLiterals, ...commentOnlyImports]
 
-  const resourceData = await addBundleLoader(allResources, this)
+  try {
+    let resourceData = await addBundleLoader(allResources, this)
 
-  log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
+    if (query.enableGlobbing) {
+      resourceData = await expandAllRequiresForGlob(resourceData, this)
+    } else {
+      resourceData = resourceData.filter(r => !r.literal.includes(`*`))
+    }
 
-  const requireStrings = await getRequireStrings(resourceData, query.addLoadersCallback, this, query.alwaysUseCommentBundles)
+    log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 
-  const inject = requireStrings.map(wrapInRequireInclude).join('\n')
-  appendCodeAndCallback(this, source, inject, sourceMap)
+    const requireStrings = await getRequireStrings(resourceData, query.addLoadersCallback, this, query.alwaysUseCommentBundles)
+    const inject = requireStrings.map(wrapInRequireInclude).join('\n')
+    appendCodeAndCallback(this, source, inject, sourceMap)
+  } catch (e) {
+    debug(e)
+    this.emitError(e.message)
+    this.callback(undefined, source, sourceMap)
+  }
 }
 
 module.exports = loader;

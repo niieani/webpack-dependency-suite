@@ -93,28 +93,34 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
     }
   }
 
-  if (typeof query.convention !== 'function' && typeof query.convention !== 'string') {
-    await Promise.all(query.convention.map(actOnConvention))
-  } else {
-    await actOnConvention(query.convention)
-  }
+  try {
+    if (typeof query.convention !== 'function' && typeof query.convention !== 'string') {
+      await Promise.all(query.convention.map(actOnConvention))
+    } else {
+      await actOnConvention(query.convention)
+    }
 
-  if (!requires.length) {
+    if (!requires.length) {
+      this.callback(undefined, source, sourceMap)
+      return
+    }
+
+    const resourceDir = path.dirname(this.resourcePath)
+    const relativeRequires = requires.map(r => ({ literal: `./${path.relative(resourceDir, r)}` }))
+
+    log(`Adding resources to ${this.resourcePath}: ${relativeRequires.map(r => r.literal).join(', ')}`)
+
+    const requireStrings = await getRequireStrings(
+      relativeRequires, query.addLoadersCallback, this
+    )
+
+    const inject = requireStrings.map(wrapInRequireInclude).join('\n')
+    return appendCodeAndCallback(this, source, inject, sourceMap)
+  } catch (e) {
+    debug(e)
+    this.emitError(e.message)
     this.callback(undefined, source, sourceMap)
-    return
   }
-
-  const resourceDir = path.dirname(this.resourcePath)
-  const relativeRequires = requires.map(r => ({ literal: `./${path.relative(resourceDir, r)}` }))
-
-  log(`Adding resources to ${this.resourcePath}: ${relativeRequires.map(r => r.literal).join(', ')}`)
-
-  const requireStrings = await getRequireStrings(
-    relativeRequires, query.addLoadersCallback, this
-  )
-
-  const inject = requireStrings.map(wrapInRequireInclude).join('\n')
-  return appendCodeAndCallback(this, source, inject, sourceMap)
 }
 
 module.exports = loader;

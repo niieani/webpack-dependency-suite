@@ -1,28 +1,20 @@
-import { Z_MEM_ERROR } from 'zlib';
-import { AddLoadersQuery, AddLoadersMethod, RequireData, RequireDataBase, PathWithLoaders } from './definitions'
-import * as path from 'path'
-import * as loaderUtils from 'loader-utils'
+import {
+  addBundleLoader,
+  appendCodeAndCallback,
+  expandAllRequiresForGlob,
+  getRequireStrings,
+  wrapInRequireInclude
+} from './inject-utils'
 import * as SourceMap from 'source-map'
-import {addBundleLoader, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback} from './inject-utils'
-import {get} from 'lodash'
+import * as loaderUtils from 'loader-utils'
+import { getResourcesFromList } from './utils'
 import * as debug from 'debug'
 const log = debug('list-based-require-loader')
 
 export interface ListBasedQuery {
   packagePropertyPath: string
-  processDependencies?: boolean | undefined
-}
-
-interface ResourcesInput {
-  path: Array<string> | string
-  lazy?: boolean
-  bundle?: string
-  chunk?: string
-}
-interface Resources {
-  literal: string
-  lazy: boolean
-  chunk?: string
+  // processDependencies?: boolean | undefined
+  enableGlobbing?: boolean
 }
 
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
@@ -41,62 +33,33 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
    */
 
   /**
-   * steps:
    * 1. resolve SELF to get the package.json contents
    * 2. _.get to the object containing resource info
    * 3. include
    */
-  const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
-    this.resolve(this.context, this.currentRequest, (err, result, value) => err ? resolve() || this.emitWarning(`Error resolving: ${this.currentRequest}`) : resolve(value)));
+  try {
+    const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
+      this.resolve(this.context, this.currentRequest, (err, result, value) => err ? resolve() || this.emitWarning(`Error resolving: ${this.currentRequest}`) : resolve(value)));
 
-  // const allResources = getResourcesFromList(resolve.descriptionFileData, query.packagePropertyPath)
-  const resources = get(resolve.descriptionFileData, query.packagePropertyPath, [] as Array<ResourcesInput | string>)
+    const allResources = getResourcesFromList(resolve.descriptionFileData, query.packagePropertyPath)
+    let resourceData = await addBundleLoader(allResources, this, 'loaders')
 
-  const allResources = [] as Array<Resources>
+    if (query.enableGlobbing) {
+      resourceData = await expandAllRequiresForGlob(resourceData, this)
+    } else {
+      resourceData = resourceData.filter(r => !r.literal.includes(`*`))
+    }
 
-  resources.forEach(input => {
-    const r = input instanceof Object && !Array.isArray(input) ? input as ResourcesInput : { path: input }
-    const paths = Array.isArray(r.path) ? r.path : [r.path]
-    paths.forEach(
-      literal => allResources.push({ literal, lazy: r.lazy || false, chunk: r.bundle || r.chunk })
-    )
-  })
+    log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 
-  const resourceData = await addBundleLoader(allResources, this, 'loaders')
-
-  log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
-
-  const requireStrings = await getRequireStrings(resourceData, undefined, this, true)
-
-  const inject = requireStrings.map(wrapInRequireInclude).join('\n')
-  appendCodeAndCallback(this, source, inject, sourceMap)
-}
-
-export function getResourcesFromList(json: Object, propertyPath: string) {
-  const resources = get(json, propertyPath, [] as Array<ResourcesInput | string>)
-
-  const allResources = [] as Array<Resources>
-
-  resources.forEach(input => {
-    const r = input instanceof Object && !Array.isArray(input) ? input as ResourcesInput : { path: input }
-    const paths = Array.isArray(r.path) ? r.path : [r.path]
-    paths.forEach(
-      literal => allResources.push({ literal, lazy: r.lazy || false, chunk: r.bundle || r.chunk })
-    )
-  })
-
-  return allResources
-}
-
-async function addLoadersMethod(files: Array<RequireData>, loaderInstance: Webpack.Core.LoaderContext): Promise<Array<PathWithLoaders>> {
-  // files[0].
-  /**
-   * 1. load MAIN package.json
-   * 2. get the aurelia resources: packageJson.aurelia && packageJson.aurelia.build && packageJson.aurelia.build.resources
-   * 3. glob all resources
-   * 4. resolve each resource in the context of MAIN package.json
-   * 5. foreach files, match with resolved resources and replace loaders or return what was there
-   */
+    const requireStrings = await getRequireStrings(resourceData, undefined, this, true)
+    const inject = requireStrings.map(wrapInRequireInclude).join('\n')
+    appendCodeAndCallback(this, source, inject, sourceMap)
+  } catch (e) {
+    debug(e)
+    this.emitError(e.message)
+    this.callback(undefined, source, sourceMap)
+  }
 }
 
 module.exports = loader

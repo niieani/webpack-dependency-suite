@@ -3,7 +3,7 @@ import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 import * as cheerio from 'cheerio'
-import {addBundleLoader, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, SimpleDependency} from './inject-utils'
+import {addBundleLoader, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, SimpleDependency, expandAllRequiresForGlob} from './inject-utils'
 import * as htmlLoader from 'html-loader'
 import * as debug from 'debug'
 const log = debug('html-require-loader')
@@ -13,6 +13,7 @@ export type SelectorAndAttribute = { selector: string, attribute: string }
 export interface HtmlRequireQuery extends AddLoadersQuery {
   selectorsAndAttributes: Array<SelectorAndAttribute>
   globReplaceRegex?: RegExp | undefined
+  enableGlobbing?: boolean
 }
 
 const defaults = {
@@ -26,27 +27,40 @@ const defaults = {
     { selector: '[view]', attribute: 'view' },
   ],
   // by default glob template string: e.g. '${anything}'
-  globReplaceRegex: /\${.+?}/g
+  globReplaceRegex: /\${.+?}/g,
+  enableGlobbing: true
 } as HtmlRequireQuery
 
 async function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
   const query = Object.assign({}, defaults, loaderUtils.parseQuery(this.query)) as HtmlRequireQuery
   const source = htmlLoader.bind(this)(pureHtml, sourceMap) as string
 
-  const resources = getTemplateResourcesData(pureHtml, query.selectorsAndAttributes, query.globReplaceRegex)
-  if (!resources.length) {
+  try {
+    const resources = getTemplateResourcesData(pureHtml, query.selectorsAndAttributes, query.globReplaceRegex)
+    if (!resources.length) {
+      return source
+    }
+
+    let resourceData = await addBundleLoader(resources, this)
+    log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
+
+    if (query.enableGlobbing) {
+      resourceData = await expandAllRequiresForGlob(resourceData, this)
+    } else {
+      resourceData = resourceData.filter(r => !r.literal.includes(`*`))
+    }
+
+    const requireStrings = await getRequireStrings(
+      resourceData, query.addLoadersCallback, this
+    )
+
+    const inject = requireStrings.map(wrapInRequireInclude).join('\n')
+    return appendCodeAndCallback(this, source, inject, sourceMap, true)
+  } catch (e) {
+    debug(e)
+    this.emitError(e.message)
     return source
   }
-
-  const resourceData = await addBundleLoader(resources, this)
-  log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
-
-  const requireStrings = await getRequireStrings(
-    resourceData, query.addLoadersCallback, this
-  )
-
-  const inject = requireStrings.map(wrapInRequireInclude).join('\n')
-  return appendCodeAndCallback(this, source, inject, sourceMap, true)
 }
 
 /**

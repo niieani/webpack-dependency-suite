@@ -15,12 +15,14 @@ export interface PathWithLoaders {
 
 export type AddLoadersMethod = (files: Array<RequireData>, loaderInstance?: Webpack.Core.LoaderContext) => Array<PathWithLoaders> | Promise<Array<PathWithLoaders>>
 
-export interface RequireData extends RequireDataBase {
+export interface RequireData extends RequireDataBaseResolved {
   loaders?: Array<string> | undefined
   fallbackLoaders?: Array<string> | undefined
   resolve: Resolver.ResolveResult // | undefined
 }
-
+export interface RequireDataBaseResolved extends RequireDataBase {
+  resolve: Resolver.ResolveResult
+}
 export interface RequireDataBase {
   literal: string
   lazy: boolean

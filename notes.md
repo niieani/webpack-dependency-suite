@@ -1,11 +1,14 @@
 # Notes
 
-- https://github.com/TheLarkInn/webpack-developer-kit
+TODO:
+  - add default extensions for globbed resources in case a glob does not contain one
 
 - require.include loaders:
   - comment-include-loader:
       /* @import */ 'module'
       /* @import @lazy @ */ 'module'
+      /* @import('thing/*/also/works') @lazy @ */ 'module' <<- globs will not work in comments cause of /**/
+      
   - conventional-include-loader (include related files according to passed in function(fs)) [eg. like-named require loader for .html files]
   - template require loader
       <require from="..." lazy bundle="abc"> (and others - configurable?)

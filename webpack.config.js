@@ -25,20 +25,20 @@ module.exports = {
           }
         ]
       },
-      {
-        test: /\.js$/,
-        include: [path.resolve('app/main.js')],
-        use: [
-          {
-            loader: 'convention-loader',
-            query: {
-              convention: 'all-files-matching-regex',
-              regex: /\.js$/,
-              directory: path.resolve('app-extra')
-            }
-          },
-        ],
-      },
+      // {
+      //   test: /\.js$/,
+      //   include: [path.resolve('app/main.js')],
+      //   use: [
+      //     {
+      //       loader: 'convention-loader',
+      //       query: {
+      //         convention: 'all-files-matching-regex',
+      //         regex: /\.js$/,
+      //         directory: path.resolve('app-extra')
+      //       }
+      //     },
+      //   ],
+      // },
       {
         test: /\.js$/,
         include: [path.resolve('app')],
@@ -46,6 +46,10 @@ module.exports = {
           {
             loader: 'list-based-require-loader',
             query: {
+              packagePropertyPath: '_test.resources',
+              enableGlobbing: true
+              // packagePropertyPath: string
+              // enableGlobbing?: boolean
             }
           }
         ],

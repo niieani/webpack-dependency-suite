@@ -21,7 +21,7 @@ export function cacheInvalidationDebounce(cacheKey: string, cache: MapCache, dic
 }
 
 export const getFilesInDir = memoize(getFilesInDirBase, (directory: string, {
-      skipHidden = true, recursive = false, regexFilter = undefined, emitWarning = console.warn.bind(console), emitError = console.error.bind(console), fileSystem = fs, regexIgnore = [/node_modules/]
+      skipHidden = true, recursive = false, regexFilter = undefined, emitWarning = console.warn.bind(console), emitError = console.error.bind(console), fileSystem = fs, regexIgnore = [/node_modules/], returnRelativeTo = directory
     }: GetFilesInDirOptions = {}) => {
   /** valid for 10 seconds before invalidating cache **/
   const cacheKey = `${directory}::${skipHidden}::${recursive}::${regexFilter}::${regexIgnore.join('::')}`
@@ -30,19 +30,24 @@ export const getFilesInDir = memoize(getFilesInDirBase, (directory: string, {
 })
 
 export interface GetFilesInDirOptions {
-  skipHidden?: boolean;
-  recursive?: boolean;
-  regexFilter?: RegExp;
-  emitWarning?: (warn: string) => void;
-  emitError?: (warn: string) => void;
-  fileSystem?: { readdir: Function, stat: Function };
+  skipHidden?: boolean
+  recursive?: boolean
+  regexFilter?: RegExp
+  emitWarning?: (warn: string) => void
+  emitError?: (warn: string) => void
+  fileSystem?: { readdir: Function, stat: Function }
   regexIgnore?: Array<RegExp>
+  /**
+   * If set to a path, additionally returns the part of the path
+   * starting from the directory base without the leading './'
+   */
+  returnRelativeTo?: string
 }
 
 export async function getFilesInDirBase(directory: string, {
-      skipHidden = true, recursive = false, regexFilter = undefined, emitWarning = console.warn.bind(console), emitError = console.error.bind(console), fileSystem = fs, regexIgnore = [/node_modules/]
+      skipHidden = true, recursive = false, regexFilter = undefined, emitWarning = console.warn.bind(console), emitError = console.error.bind(console), fileSystem = fs, regexIgnore = [/node_modules/], returnRelativeTo = directory
     }: GetFilesInDirOptions = {}
-  ): Promise<Array<{ filePath: string, stat: fs.Stats }>> {
+  ): Promise<Array<{ filePath: string, stat: fs.Stats, relativePath: string }>> {
 
   if (!directory) {
     emitError(`No directory supplied`)
@@ -66,9 +71,12 @@ export async function getFilesInDirBase(directory: string, {
 
   let stats = (await Promise.all(
     files
-      .map(filePath => new Promise<{ filePath: string, stat: fs.Stats }>((resolve, reject) =>
-        fileSystem.stat(filePath, (err, stat) => err ? resolve({filePath, stat}) : resolve({filePath, stat})))
-      )
+      .map(filePath => new Promise<{ filePath: string, stat: fs.Stats, relativePath: string }>((resolve, reject) =>
+        fileSystem.stat(filePath, (err, stat) =>
+          err ? resolve({filePath, stat, relativePath: ''}) :
+          resolve({filePath, stat, relativePath: path.relative(returnRelativeTo, filePath)})
+        )
+      ))
   )).filter(stat => !!stat.stat)
 
   if (regexFilter) {
@@ -84,7 +92,7 @@ export async function getFilesInDirBase(directory: string, {
   const subDirectoryStats = await Promise.all(
     stats.filter(file => file.stat.isDirectory()).map(
       file => getFilesInDir(file.filePath, {
-        skipHidden, recursive, regexFilter, emitWarning, emitError, fileSystem
+        skipHidden, recursive, regexFilter, emitWarning, emitError, fileSystem, regexIgnore, returnRelativeTo
       })
     )
   )

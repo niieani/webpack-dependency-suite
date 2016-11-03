@@ -48,6 +48,7 @@ export async function expandGlobBase(literal: string, loaderInstance: Webpack.Co
     if (!moduleName.includes(`*`)) {
       const resolved = await resolveLiteral(Object.assign({ literal: moduleName }), loaderInstance, undefined, false /* do not emit warnings for bad resolves here */)
       const root = resolved.resolve && resolved.resolve.descriptionFileRoot
+      // TODO: add support for aliases when they point to a subdirectory
       if (root) {
         possibleRoots = [root]
       }
@@ -65,19 +66,19 @@ export async function expandGlobBase(literal: string, loaderInstance: Webpack.Co
     }))
   )
 
-  let nonRelativePath = path.join(literal) // removes ./ or from the path
+  let nonRelativePath = path.join(literal) // removes ./ from the path
   while (nonRelativePath.startsWith('../')) {
+    loaderInstance.emitWarning(`Combining globbing with parent-path traversal is not recommended: '${literal}'`)
     nonRelativePath = nonRelativePath.slice(3)
   }
   // test case: escape('werwer/**/werwer/*.html').replace(/\//g, '[\\/]+').replace(/\\\*\\\*/g, '\.*?').replace(/\\\*/g, '[^/\\\\]*?')
   const globRegexString = escapeStringForRegex(nonRelativePath)
     .replace(/\//g, '[\\/]+') // accept Windows and Unix slashes
-    .replace(/\\\*\\\*/g, '\.*?') // multi glob * => any number of subdirectories
+    .replace(/\\\*\\\*/g, '\.*?') // multi glob ** => any number of subdirectories
     .replace(/\\\*/g, '[^/\\\\]*?') // single glob * => one directory (stops at first slash/backslash)
-  const globRegex = new RegExp(globRegexString)
-  const correctPaths = possiblePaths.filter(p => p.stat.isFile() && globRegex.test(p.filePath))
-  // return correctPaths
-  // return correctPaths.map(p => ({ literal: p.filePath }))
+  const globRegex = new RegExp(`^${globRegexString}$`) // (?:\.\w+)
+  const correctPaths = possiblePaths.filter(p => p.stat.isFile() && globRegex.test(p.relativePath))
+
   return correctPaths.map(p => p.filePath)
 
 /*

@@ -23,7 +23,8 @@
       [
         "resources/triple"
       ],
-      "resources/glo*b/test-*.js"
+      "resources/glo*b/test-*.js",
+      "root-most"
     ]
   },
   "repository": {
@@ -60,6 +61,7 @@
     "@types/escape-string-regexp": "^0.0.30",
     "@types/lodash": "^4.14.38",
     "@types/node": "^6.0.46",
+    "@types/semver": "^5.3.30",
     "@types/webpack": "^1.12.35",
     "acorn": "^4.0.3",
     "cheerio": "^0.22.0",
@@ -69,6 +71,7 @@
     "jest": "^16.1.0-alpha",
     "loader-utils": "^0.2.16",
     "lodash": "^4.16.5",
+    "semver": "^5.3.0",
     "source-map": "^0.5.6"
   },
   "devDependencies": {

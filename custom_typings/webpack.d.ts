@@ -215,7 +215,6 @@ declare namespace Webpack {
     export interface Asset {}
 
     export type LoaderCallback = (error?: Error | undefined | null, code?: string, jsonSourceMap?: SourceMap.RawSourceMap) => void
-    export type ResolveCallback = StandardCallbackWithLog<string, Resolver.ResolveResult> & { missing?: Array<string> }
     export interface LoaderContext {
       fs: typeof fs & CachedInputFileSystem
 
@@ -229,7 +228,7 @@ declare namespace Webpack {
        * Compiles the code and returns its module.exports
        */
       exec: (code: string, filename: string) => any
-      resolve: (path: string, request: string, callback: ResolveCallback) => void
+      resolve: (path: string, request: string, callback: EnhancedResolve.ResolveCallback) => void
       resolveSync: (path: string, request: string) => void
       sourceMap: boolean
       webpack: boolean

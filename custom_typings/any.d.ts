@@ -7,3 +7,5 @@ declare module 'loader-utils' {
   export function getCurrentRequest(webpackLoader)
 }
 declare module 'html-loader'
+
+declare module 'enhanced-resolve/lib/getInnerRequest'

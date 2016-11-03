@@ -1,7 +1,6 @@
-import { concatPromiseResults } from './utils';
-import { addBundleLoader, expandAllRequiresForGlob, resolveLiteral } from './inject-utils';
-import { getResourcesFromList } from './list-based-require-loader'
-import { PathWithLoaders, RequireData, RequireDataBaseResolved } from './definitions';
+import { concatPromiseResults, getResourcesFromList } from './utils'
+import { addBundleLoader, expandAllRequiresForGlob, resolveLiteral } from './inject-utils'
+import { PathWithLoaders, RequireData, RequireDataBaseResolved } from './definitions'
 
 /**
  * 1. load MAIN package.json

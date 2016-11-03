@@ -1,10 +1,12 @@
 'use strict';
+require('ts-node').register();
 const webpack = require('webpack');
 const webpackSources = require('webpack-sources');
 const enhancedResolve = require('enhanced-resolve');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
-require('ts-node').register();
+const log = require('debug')('config')
+const RootMostAliasPlugin = require('./plugins/root-most-alias-plugin')
 
 module.exports = {
   entry: {
@@ -106,13 +108,43 @@ module.exports = {
       path.resolve("app"),
       "node_modules"
     ],
-    extensions: ['.js']
+    extensions: ['.js'],
+    plugins: [new RootMostAliasPlugin(__dirname, require('./package.json'))]
+    // plugins: [new RootMostAliasPlugin('described-resolve', {}, 'resolve')]
   },
   plugins: [
     // This function is the `apply` function if you were to create an external plugin
     // Having it inline provides some nice conviences for debugging and development
     function() {
       var compiler = this;
+
+      compiler.plugin("after-resolve", function(result, callback) {
+        if(!result) return callback();
+        log(result)
+        // if(resourceRegExp.test(result.resource)) {
+        //   if(typeof newContentResource !== "undefined")
+        //     result.resource = path.resolve(result.resource, newContentResource);
+        //   if(typeof newContentRecursive !== "undefined")
+        //     result.recursive = newContentRecursive;
+        //   if(typeof newContentRegExp !== "undefined")
+        //     result.regExp = newContentRegExp;
+        //   if(typeof newContentCreateContextMap === "function")
+        //     result.resolveDependencies = createResolveDependenciesFromContextMap(newContentCreateContextMap);
+        //   if(typeof newContentCallback === "function") {
+        //     var origResource = result.resource;
+        //     newContentCallback(result);
+        //     if(result.resource !== origResource) {
+        //       result.resource = path.resolve(origResource, result.resource);
+        //     }
+        //   } else {
+        //     result.dependencies.forEach(function(d) {
+        //       if(d.critical)
+        //         d.critical = false;
+        //     });
+        //   }
+        // }
+        return callback(null, result);
+      });
       compiler.plugin('compilation', function(compilation) {
         compilation.plugin('after-optimize-modules', function(modules) {
           // debugger;

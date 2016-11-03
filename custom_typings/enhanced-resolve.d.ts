@@ -2,6 +2,8 @@ export as namespace EnhancedResolve;
 export = EnhancedResolve
 
 declare namespace EnhancedResolve {
+  export type ResolveCallback = Webpack.Core.StandardCallbackWithLog<string, ResolveResult> & { missing?: Array<string> }
+
   export interface ResolveContext {
     issuer?: string
   }
@@ -11,7 +13,7 @@ declare namespace EnhancedResolve {
     /**
      * related package.json file
      */
-    descriptionFileData: Object
+    descriptionFileData: { [index: string]: any, version: string, name: string, dependencies: {[index:string]: string} }
     /**
      * full path to package.json
      */
@@ -29,10 +31,10 @@ declare namespace EnhancedResolve {
   }
 
   export class Resolver {
-    resolve(context: ResolveContext, path: string, request: string, callback: StandardCallbackWithLog<string, ResolveResult>): void
+    resolve(context: ResolveContext, path: string, request: string, callback: EnhancedResolve.ResolveCallback): void
+    doResolve
+    plugin
   }
-}
 
-declare module 'enhanced-resolve/lib/Resolver' {
-  export = EnhancedResolve.Resolver
+  export function createInnerCallback<T>(callback: T, options: { log?: (msg:string) => void, stack?: any, missing?: Array<any> }, message?: string | null, messageOptional?: boolean): T & { log: (msg: string) => void, stack: any, missing: Array<any> }
 }

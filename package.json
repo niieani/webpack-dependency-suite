@@ -64,6 +64,7 @@
     "@types/semver": "^5.3.30",
     "@types/webpack": "^1.12.35",
     "acorn": "^4.0.3",
+    "aurelia-templating-resources": "^1.1.1",
     "cheerio": "^0.22.0",
     "debug": "^2.2.0",
     "escape-string-regexp": "^1.0.5",

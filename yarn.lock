@@ -264,6 +264,80 @@ asynckit@^0.4.0:
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79"
 
+aurelia-binding@^1.0.0, aurelia-binding@^1.0.7:
+  version "1.0.9"
+  resolved "https://registry.yarnpkg.com/aurelia-binding/-/aurelia-binding-1.0.9.tgz#b4d14507dda00aef7dbc56fbcd527c5f9ebd137c"
+  dependencies:
+    aurelia-logging "^1.0.0"
+    aurelia-metadata "^1.0.0"
+    aurelia-pal "^1.0.0"
+    aurelia-task-queue "^1.0.0"
+
+aurelia-dependency-injection@^1.0.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/aurelia-dependency-injection/-/aurelia-dependency-injection-1.2.0.tgz#b82a6619236a2e971e5974fa3466a812eec3925f"
+  dependencies:
+    aurelia-metadata "^1.0.0"
+    aurelia-pal "^1.0.0"
+
+aurelia-loader@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/aurelia-loader/-/aurelia-loader-1.0.0.tgz#b78c2a2813aa8e441247237dd66fd62e5d4e19ea"
+  dependencies:
+    aurelia-metadata "^1.0.0"
+    aurelia-path "^1.0.0"
+
+aurelia-logging@^1.0.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/aurelia-logging/-/aurelia-logging-1.1.0.tgz#e8d6dbf1635b65cda75f0bdd9b81dc3feb330023"
+
+aurelia-metadata@^1.0.0:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/aurelia-metadata/-/aurelia-metadata-1.0.2.tgz#a3b2fc9470c12ea64776b58a23a7cfead3e7c18b"
+  dependencies:
+    aurelia-pal "^1.0.0"
+
+aurelia-pal@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/aurelia-pal/-/aurelia-pal-1.0.0.tgz#f195eda935cca29d22e885a0144b2a2953ffd9d3"
+
+aurelia-path@^1.0.0:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/aurelia-path/-/aurelia-path-1.1.1.tgz#caa9d20bc8515a5f9f286d9a3b18d81b2c85b0dd"
+
+aurelia-task-queue@^1.0.0, aurelia-task-queue@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/aurelia-task-queue/-/aurelia-task-queue-1.1.0.tgz#45afddb2ecb07e1b1b2d1f85e90f095220c24ade"
+  dependencies:
+    aurelia-pal "^1.0.0"
+
+aurelia-templating-resources:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/aurelia-templating-resources/-/aurelia-templating-resources-1.1.1.tgz#fd55bbdde07d2a7249ac244ae5c696efb8b0bfb7"
+  dependencies:
+    aurelia-binding "^1.0.7"
+    aurelia-dependency-injection "^1.0.0"
+    aurelia-loader "^1.0.0"
+    aurelia-logging "^1.0.0"
+    aurelia-metadata "^1.0.0"
+    aurelia-pal "^1.0.0"
+    aurelia-path "^1.0.0"
+    aurelia-task-queue "^1.0.0"
+    aurelia-templating "^1.0.0"
+
+aurelia-templating@^1.0.0:
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/aurelia-templating/-/aurelia-templating-1.1.2.tgz#a24c5dd94962cff35409058f2716bb4769495a19"
+  dependencies:
+    aurelia-binding "^1.0.0"
+    aurelia-dependency-injection "^1.0.0"
+    aurelia-loader "^1.0.0"
+    aurelia-logging "^1.0.0"
+    aurelia-metadata "^1.0.0"
+    aurelia-pal "^1.0.0"
+    aurelia-path "^1.0.0"
+    aurelia-task-queue "^1.1.0"
+
 aws-sign2@~0.6.0:
   version "0.6.0"
   resolved "https://registry.yarnpkg.com/aws-sign2/-/aws-sign2-0.6.0.tgz#14342dd38dbcc94d0e5b87d763cd63612c0e794f"

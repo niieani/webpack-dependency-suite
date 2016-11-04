@@ -24,7 +24,7 @@ const conventions: { [convention: string]: ConventionFunction } = {
     const noExtension = basename.substr(0, basename.lastIndexOf('.')) || basename
     let extensions: string[]
     if (typeof query.extension !== 'array') {
-      extensions = [query.extension || '.html']
+      extensions = query.extension ? [query.extension] : ['.html', '.css']
     } else {
       extensions = query.extension
     }

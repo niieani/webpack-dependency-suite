@@ -38,13 +38,28 @@ export function appendCodeAndCallback(loader: Webpack.Core.LoaderContext, source
   }
 }
 
-export async function expandGlobBase(literal: string, loaderInstance: Webpack.Core.LoaderContext) {
+export function splitRequest(literal: string) {
   const pathBits = literal.split(`/`)
   const literalIsRelative = literal[0] === '.'
+  if (!literalIsRelative) {
+    const moduleNameLength = pathBits[0].startsWith(`@`) ? 2 : 1
+    const moduleName = pathBits.slice(0, moduleNameLength).join(`/`)
+    const remainingRequest = pathBits.slice(moduleNameLength).join(`/`)
+    return {
+      moduleName, remainingRequest, pathBits
+    }
+  } else {
+    return { remainingRequest: literal, pathBits, moduleName: '' }
+  }
+}
+
+export async function expandGlobBase(literal: string, loaderInstance: Webpack.Core.LoaderContext) {
+  const { pathBits, remainingRequest, moduleName } = splitRequest(literal)
+  // const literalIsRelative = literal[0] === '.'
   let possibleRoots = loaderInstance.options.resolve.modules.filter((m: string) => m !== 'node_modules' /* && m[0] !== '/' -- *nix only */) as Array<string>
 
-  if (!literalIsRelative) {
-    const moduleName = pathBits[0].startsWith(`@`) ? pathBits.slice(0, 2).join(`/`) : pathBits[0]
+  if (moduleName) {
+    // const moduleName = pathBits[0].startsWith(`@`) ? pathBits.slice(0, 2).join(`/`) : pathBits[0]
     if (!moduleName.includes(`*`)) {
       const resolved = await resolveLiteral(Object.assign({ literal: moduleName }), loaderInstance, undefined, false /* do not emit warnings for bad resolves here */)
       const root = resolved.resolve && resolved.resolve.descriptionFileRoot

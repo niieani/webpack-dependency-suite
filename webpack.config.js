@@ -6,7 +6,8 @@ const enhancedResolve = require('enhanced-resolve');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
 const log = require('debug')('config')
-const RootMostAliasPlugin = require('./plugins/root-most-alias-plugin')
+const RewriteModuleSubdirectoryPlugin = require('./plugins/rewrite-module-subdirectory-plugin')
+const RootMostResolvePlugin = require('./plugins/root-most-resolve-plugin')
 
 module.exports = {
   entry: {
@@ -109,7 +110,26 @@ module.exports = {
       "node_modules"
     ],
     extensions: ['.js'],
-    plugins: [new RootMostAliasPlugin(__dirname, require('./package.json'))]
+    plugins: [
+      // new CustomMainPlugin((request) => {
+      //   const moduleName = request.descriptionFileData && request.descriptionFileData.name
+      //   if (!moduleName) {
+      //     return
+      //   }
+      //   // log(request)
+      //   return `dist/native-modules/${moduleName}`
+      // }),
+      new RewriteModuleSubdirectoryPlugin((moduleName, remainingRequest, request) => {
+        if (moduleName.startsWith('aurelia-'))
+          return `${moduleName}/dist/native-modules/${remainingRequest || moduleName}`
+      }),
+      new RewriteModuleSubdirectoryPlugin((moduleName, remainingRequest, request) => {
+        if (moduleName.startsWith('aurelia-'))
+          return `${moduleName}/dist/commonjs/${remainingRequest || moduleName}`
+      }),
+      new RootMostResolvePlugin(__dirname)
+    ],
+    // mainFiles: ['dist/native-modules/index', 'index']
     // plugins: [new RootMostAliasPlugin('described-resolve', {}, 'resolve')]
   },
   plugins: [

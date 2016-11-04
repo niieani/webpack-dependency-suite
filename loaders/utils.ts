@@ -129,3 +129,14 @@ export function getResourcesFromList(json: Object, propertyPath: string) {
 
   return allResources
 }
+
+export async function getResourcesRecursively(tryRequestName: string, context: string, packagePropertyPath: string, recursive = false, literalsTried = [tryRequestName] as Array<string>): Promise<Array<RequireDataBase>> {
+  const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
+    this.resolve(context, tryRequestName, (err, result, value) => err ? resolve() : resolve(value)));
+  const resources = resolve ?
+    getResourcesFromList(resolve.descriptionFileData, packagePropertyPath).filter(r => literalsTried.indexOf(r.literal) === -1) :
+    []
+  return await concatPromiseResults(
+    resources.map(r => getResourcesRecursively(r.literal, resolve.descriptionFileRoot, packagePropertyPath, recursive, literalsTried))
+  )
+}

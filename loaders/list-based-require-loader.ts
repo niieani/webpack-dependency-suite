@@ -3,17 +3,18 @@ import {
   appendCodeAndCallback,
   expandAllRequiresForGlob,
   getRequireStrings,
+  splitRequest,
   wrapInRequireInclude
-} from './inject-utils'
+} from './inject-utils';
 import * as SourceMap from 'source-map'
 import * as loaderUtils from 'loader-utils'
-import { getResourcesFromList } from './utils'
+import { concatPromiseResults, getResourcesFromList, getResourcesRecursively } from './utils';
 import * as debug from 'debug'
 const log = debug('list-based-require-loader')
 
 export interface ListBasedQuery {
   packagePropertyPath: string
-  // processDependencies?: boolean | undefined
+  processDependencies?: boolean | undefined
   enableGlobbing?: boolean
 }
 
@@ -38,10 +39,24 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
    * 3. include
    */
   try {
-    const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
-      this.resolve(this.context, this.currentRequest, (err, result, value) => err ? resolve() || this.emitWarning(`Error resolving: ${this.currentRequest}`) : resolve(value)));
+    const allResources = await getResourcesRecursively(this.currentRequest, this.context, query.packagePropertyPath, query.processDependencies)
+    // const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
+    //   this.resolve(this.context, this.currentRequest, (err, result, value) => err ? resolve() || this.emitWarning(`Error resolving: ${this.currentRequest}`) : resolve(value)));
 
-    const allResources = getResourcesFromList(resolve.descriptionFileData, query.packagePropertyPath)
+    // let allResources = getResourcesFromList(resolve.descriptionFileData, query.packagePropertyPath)
+
+    // if (query.processDependencies) {
+    //   allResources.map(r => splitRequest(r.literal)).map(async r => {
+    //     const resolved = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
+    //       this.resolve(this.context, r.moduleName, (err, result, value) => err ? resolve() : resolve(value)));
+    //     if (resolved && resolved.descriptionFileRoot !== resolve.descriptionFileRoot) {
+    //       return getResourcesFromList(resolved.descriptionFileData, query.packagePropertyPath)
+    //     } else {
+    //       return []
+    //     }
+    //   })
+    // }
+
     let resourceData = await addBundleLoader(allResources, this, 'loaders')
 
     if (query.enableGlobbing) {

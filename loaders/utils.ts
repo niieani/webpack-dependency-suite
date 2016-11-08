@@ -2,7 +2,14 @@ import * as path from 'path'
 import * as fs from 'fs'
 import {memoize, MapCache} from 'lodash'
 import { AddLoadersQuery, AddLoadersMethod, RequireData, RequireDataBase, PathWithLoaders } from './definitions'
-import {addBundleLoader, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, expandAllRequiresForGlob} from './inject-utils'
+import {
+  addBundleLoader,
+  appendCodeAndCallback,
+  expandAllRequiresForGlob,
+  getRequireStrings,
+  splitRequest,
+  wrapInRequireInclude
+} from './inject-utils';
 import {get} from 'lodash'
 
 const invalidationDebounceDirectory = new WeakMap<any, Map<string, NodeJS.Timer>>()
@@ -130,13 +137,27 @@ export function getResourcesFromList(json: Object, propertyPath: string) {
   return allResources
 }
 
-export async function getResourcesRecursively(tryRequestName: string, context: string, packagePropertyPath: string, recursive = false, literalsTried = [tryRequestName] as Array<string>): Promise<Array<RequireDataBase>> {
+export async function getResourcesRecursively(tryRequestName: string, context: string, packagePropertyPath: string, recursive = false, processDependencies = false, literalsTried = [] as Array<string>): Promise<Array<RequireDataBase>> {
+  const {moduleName, remainingRequest} = splitRequest(tryRequestName)
+  if (moduleName) {
+    literalsTried.push(`${moduleName}/${remainingRequest}`)
+  }
+  else {
+    const nodeModulesStart = context.indexOf('node_modules')
+    if (nodeModulesStart >= 0)
+      literalsTried.push(`${context.slice(nodeModulesStart + 'node_modules'.length + 1)}/${tryRequestName}`)
+    else
+      literalsTried.push(`${context}/${tryRequestName}`)
+  }
+
+  // TODO: processDependencies
   const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
     this.resolve(context, tryRequestName, (err, result, value) => err ? resolve() : resolve(value)));
   const resources = resolve ?
     getResourcesFromList(resolve.descriptionFileData, packagePropertyPath).filter(r => literalsTried.indexOf(r.literal) === -1) :
     []
   return await concatPromiseResults(
-    resources.map(r => getResourcesRecursively(r.literal, resolve.descriptionFileRoot, packagePropertyPath, recursive, literalsTried))
+    resources.map(r => getResourcesRecursively(r.literal, resolve.descriptionFileRoot, packagePropertyPath, recursive, false, literalsTried))
   )
+  // TODO: dedupe, remove duplicates
 }

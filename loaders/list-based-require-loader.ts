@@ -14,6 +14,7 @@ const log = debug('list-based-require-loader')
 
 export interface ListBasedQuery {
   packagePropertyPath: string
+  recursiveProcessing?: boolean | undefined
   processDependencies?: boolean | undefined
   enableGlobbing?: boolean
 }
@@ -39,7 +40,7 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
    * 3. include
    */
   try {
-    const allResources = await getResourcesRecursively(this.currentRequest, this.context, query.packagePropertyPath, query.processDependencies)
+    const allResources = await getResourcesRecursively(this.currentRequest, this.context, query.packagePropertyPath, query.recursiveProcessing, query.processDependencies)
     // const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
     //   this.resolve(this.context, this.currentRequest, (err, result, value) => err ? resolve() || this.emitWarning(`Error resolving: ${this.currentRequest}`) : resolve(value)));
 

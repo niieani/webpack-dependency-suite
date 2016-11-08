@@ -5,7 +5,11 @@ TODO:
   - fork (or require) bundle loader https://github.com/webpack/bundle-loader/blob/master/index.js 
     and add a parameter, e.g. module.exports.SIGNIFIER = true
     so that its clear to the aurelia-loader its an unresolved method
-
+  - processDependencies for getResourcesRecursively
+  - when adding resources from list, allow them to be relative to package "main" 
+  - OR simply try resolving as ${module_name}/thing FIRST
+  - add the option to use the package.json dependencies only as the SINGLE SOURCE OF TRUTH, 
+    but not add any external dependencies from it for the local package (only for dependencies)   
 note:
 - globbed paths MUST include extensions
 

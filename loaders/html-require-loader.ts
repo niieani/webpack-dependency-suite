@@ -41,7 +41,7 @@ async function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourc
       return source
     }
 
-    let resourceData = await addBundleLoader(resources, this)
+    let resourceData = await addBundleLoader(resources)
     log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 
     if (query.enableGlobbing) {

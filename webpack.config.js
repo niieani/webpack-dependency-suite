@@ -49,8 +49,9 @@ module.exports = {
           {
             loader: 'list-based-require-loader',
             query: {
-              packagePropertyPath: '_test.resources',
-              enableGlobbing: true
+              packagePropertyPath: 'aurelia.build.resources',
+              enableGlobbing: true,
+              rootDir: path.resolve()
               // packagePropertyPath: string
               // enableGlobbing?: boolean
             }

@@ -5,8 +5,9 @@ import * as SourceMap from 'source-map'
 import { getFilesInDir, concatPromiseResults, cacheInvalidationDebounce } from './utils'
 import ModuleDependency = require('webpack/lib/dependencies/ModuleDependency')
 import escapeStringForRegex = require('escape-string-regexp')
-import {memoize} from 'lodash'
+import {memoize, uniqBy} from 'lodash'
 import * as debug from 'debug'
+const log = debug('utils')
 
 export function appendCodeAndCallback(loader: Webpack.Core.LoaderContext, source: string, inject: string, sourceMap?: SourceMap.RawSourceMap, synchronousIfPossible = false) {
   inject += (!source.trim().endsWith(';')) ? ';\n' : '\n'
@@ -38,56 +39,86 @@ export function appendCodeAndCallback(loader: Webpack.Core.LoaderContext, source
   }
 }
 
-export function splitRequest(literal: string) {
-  const pathBits = literal.split(`/`)
+export async function splitRequest(literal: string, loaderInstance?: Webpack.Core.LoaderContext) {
+  // log(`Split Request: ${literal}`)
+  let pathBits = literal.split(`/`)
+  let remainingRequestBits = pathBits.slice()
   const literalIsRelative = literal[0] === '.'
   if (!literalIsRelative) {
+    const fullPathNdIdx = pathBits.lastIndexOf('node_modules')
+    if (fullPathNdIdx >= 0) {
+      // conform full hard disk path /.../node_modules/MODULE_NAME/... to just MODULE_NAME/...
+      pathBits = pathBits.slice(fullPathNdIdx + 1)
+    }
     const moduleNameLength = pathBits[0].startsWith(`@`) ? 2 : 1
     const moduleName = pathBits.slice(0, moduleNameLength).join(`/`)
-    const remainingRequest = pathBits.slice(moduleNameLength).join(`/`)
-    return {
-      moduleName, remainingRequest, pathBits
+    // remainingRequest may be globbed:
+    let ifModuleRemainingRequestBits = pathBits.slice(moduleNameLength)
+    const remainingRequest = ifModuleRemainingRequestBits.join(`/`)
+    let moduleRoot = ''
+    let tryModule: {
+      resolve: EnhancedResolve.ResolveResult | undefined;
+    } = { resolve: undefined }
+    if (loaderInstance && !moduleName.includes(`*`)) {
+      // TODO: test this
+      tryModule = await resolveLiteral({ literal: `${moduleName}` }, loaderInstance, undefined, false)
+      if (tryModule.resolve && tryModule.resolve.descriptionFileRoot) {
+        moduleRoot = tryModule.resolve.descriptionFileRoot
+      }
+      log(`does module '${moduleName}' exist?: ${tryModule.resolve && 'true' || 'false'}`)
     }
-  } else {
-    return { remainingRequest: literal, pathBits, moduleName: '' }
-  }
-}
-
-export async function expandGlobBase(literal: string, loaderInstance: Webpack.Core.LoaderContext) {
-  const { pathBits, remainingRequest, moduleName } = splitRequest(literal)
-  // const literalIsRelative = literal[0] === '.'
-  let possibleRoots = loaderInstance.options.resolve.modules.filter((m: string) => m !== 'node_modules' /* && m[0] !== '/' -- *nix only */) as Array<string>
-
-  if (moduleName) {
-    // const moduleName = pathBits[0].startsWith(`@`) ? pathBits.slice(0, 2).join(`/`) : pathBits[0]
-    if (!moduleName.includes(`*`)) {
-      const resolved = await resolveLiteral(Object.assign({ literal: moduleName }), loaderInstance, undefined, false /* do not emit warnings for bad resolves here */)
-      const root = resolved.resolve && resolved.resolve.descriptionFileRoot
-      // TODO: add support for aliases when they point to a subdirectory
-      if (root) {
-        possibleRoots = [root]
+    if (!loaderInstance || tryModule.resolve) {
+      return {
+        moduleName, moduleRoot, remainingRequest, pathBits, remainingRequestBits: ifModuleRemainingRequestBits
       }
     }
-  } else {
-    const nextGlobAtIndex = pathBits.findIndex(pb => pb.includes(`*`))
-    const relativePathUntilFirstGlob = pathBits.slice(0, nextGlobAtIndex).join(`/`)
-    possibleRoots = [path.join(path.dirname(loaderInstance.resourcePath), relativePathUntilFirstGlob)]
+  }
+  return { remainingRequest: literal, remainingRequestBits, pathBits, moduleName: '', moduleRoot: '' }
+}
+
+export async function expandGlobBase(literal: string, loaderInstance: Webpack.Core.LoaderContext, rootForRelativeResolving: string | false = path.dirname(loaderInstance.resourcePath)) {
+  const { pathBits, remainingRequest, remainingRequestBits, moduleName, moduleRoot } = await splitRequest(literal, loaderInstance)
+  // const literalIsRelative = literal[0] === '.'
+  let possibleRoots = loaderInstance.options.resolve.modules.filter((m: string) => path.isAbsolute(m)) as Array<string>
+
+  const nextGlobAtIndex = remainingRequestBits.findIndex(pb => pb.includes(`*`))
+  const relativePathUntilFirstGlob = remainingRequestBits.slice(0, nextGlobAtIndex).join(`/`)
+  const relativePathFromFirstGlob = remainingRequestBits.slice(nextGlobAtIndex).join(`/`)
+
+  if (moduleName && moduleRoot) {
+    possibleRoots = [moduleRoot]
+    // const moduleName = pathBits[0].startsWith(`@`) ? pathBits.slice(0, 2).join(`/`) : pathBits[0]
+    // if (moduleRoot) {
+      // TODO: add support for aliases when they point to a subdirectory
+      // Or maybe the resolve will already include it?
+      // const resolved = await resolveLiteral(Object.assign({ literal: moduleName }), loaderInstance, undefined, false /* do not emit warnings for bad resolves here */)
+      // const root = resolved.resolve && resolved.resolve.descriptionFileRoot
+      // if (root) {
+      //   possibleRoots = [root]
+      // }
+    // }
+  } else if (rootForRelativeResolving) {
+    // possibleRoots = [path.join(path.dirname(loaderInstance.resourcePath), relativePathUntilFirstGlob)]
+    possibleRoots = [rootForRelativeResolving, ...possibleRoots]
   }
 
-  const possiblePaths = await concatPromiseResults(
-    possibleRoots.map(async directory => await getFilesInDir(directory, {
+  let possiblePaths = await concatPromiseResults(
+    possibleRoots.map(async directory => await getFilesInDir(path.join(directory, relativePathUntilFirstGlob), {
       recursive: true, emitWarning: loaderInstance.emitWarning, emitError: loaderInstance.emitError,
       fileSystem: loaderInstance.fs, skipHidden: true
     }))
   )
 
-  let nonRelativePath = path.join(literal) // removes ./ from the path
-  while (nonRelativePath.startsWith('../')) {
-    loaderInstance.emitWarning(`Combining globbing with parent-path traversal is not recommended: '${literal}'`)
-    nonRelativePath = nonRelativePath.slice(3)
-  }
+  possiblePaths = uniqBy(possiblePaths, 'filePath')
+
+  // let nonRelativePath = path.normalize(path.join(literal)) // removes ./ from the path
+  // while (nonRelativePath.startsWith('../')) {
+  //   loaderInstance.emitWarning(`Combining globbing with parent-path traversal is not supported: '${literal}'`)
+  //   nonRelativePath = nonRelativePath.slice(3)
+  // }
+
   // test case: escape('werwer/**/werwer/*.html').replace(/\//g, '[\\/]+').replace(/\\\*\\\*/g, '\.*?').replace(/\\\*/g, '[^/\\\\]*?')
-  const globRegexString = escapeStringForRegex(nonRelativePath)
+  const globRegexString = escapeStringForRegex(relativePathFromFirstGlob)
     .replace(/\//g, '[\\/]+') // accept Windows and Unix slashes
     .replace(/\\\*\\\*/g, '\.*?') // multi glob ** => any number of subdirectories
     .replace(/\\\*/g, '[^/\\\\]*?') // single glob * => one directory (stops at first slash/backslash)
@@ -121,21 +152,26 @@ export async function expandGlobBase(literal: string, loaderInstance: Webpack.Co
   // }
 }
 
-const expandGlob = memoize(expandGlobBase, (literal: string, loaderInstance: Webpack.Core.LoaderContext) => {
+const expandGlob = memoize(expandGlobBase, (literal: string, loaderInstance: Webpack.Core.LoaderContext, rootForRelativeResolving = path.dirname(loaderInstance.resourcePath)) => {
   /** valid for 10 seconds for the same literal and resoucePath */
-  const cacheKey = `${literal}::${path.dirname(loaderInstance.resourcePath)}`
+  const cacheKey = `${literal}::${path.dirname(loaderInstance.resourcePath)}::${rootForRelativeResolving}`
   // invalidate every 10 seconds based on each unique Webpack compilation
   cacheInvalidationDebounce(cacheKey, expandGlob.cache, loaderInstance._compilation)
   return cacheKey
 })
 
-export async function expandAllRequiresForGlob<T extends { literal: string }>(requires: Array<T>, loaderInstance: Webpack.Core.LoaderContext) {
+export async function expandAllRequiresForGlob<T extends { literal: string }>(requires: Array<T>, loaderInstance: Webpack.Core.LoaderContext, rootForRelativeResolving: string | false = path.dirname(loaderInstance.resourcePath), returnRelativeLiteral = false) {
   const needDeglobbing = requires.filter(r => r.literal.includes(`*`))
   const deglobbed = requires.filter(r => !r.literal.includes(`*`))
-  return deglobbed.concat(await concatPromiseResults(needDeglobbing.map(async r =>
-    (await expandGlob(r.literal, loaderInstance))
-      .map(correctPath => Object.assign({}, r, { literal: `./${path.relative(path.dirname(loaderInstance.resourcePath), correctPath)}` }))
+  const allDeglobbed = deglobbed.concat(await concatPromiseResults(needDeglobbing.map(async r =>
+    (await expandGlob(r.literal, loaderInstance, rootForRelativeResolving))
+      .map(correctPath => Object.assign({}, r, {
+        literal: returnRelativeLiteral ?
+          `./${path.relative(path.dirname(loaderInstance.resourcePath), correctPath)}` :
+          correctPath
+      }))
   )))
+  return uniqBy(allDeglobbed, 'literal')
 }
 
 export async function getRequireStrings(maybeResolvedRequires: Array<RequireData | { literal: string, resolve?: undefined }>, addLoadersMethod: AddLoadersMethod | undefined, loaderInstance: Webpack.Core.LoaderContext, forceFallbackLoaders = false): Promise<Array<string>> {
@@ -183,7 +219,7 @@ export function resolveLiteral<T extends { literal: string }>(toRequire: T, load
   )
 }
 
-export function addBundleLoader<T extends RequireDataBase>(resources: Array<T>, loaderInstance: Webpack.Core.LoaderContext, property = 'fallbackLoaders') {
+export function addBundleLoader<T extends RequireDataBase>(resources: Array<T>, property = 'fallbackLoaders') {
   return resources.map(toRequire => {
     const lazy = toRequire.lazy && 'lazy' || ''
     const chunkName = (toRequire.chunk && `name=${toRequire.chunk}`) || ''

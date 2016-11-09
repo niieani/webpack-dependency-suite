@@ -18,10 +18,12 @@ export type AddLoadersMethod = (files: Array<RequireData>, loaderInstance?: Webp
 export interface RequireData extends RequireDataBaseResolved {
   loaders?: Array<string> | undefined
   fallbackLoaders?: Array<string> | undefined
-  resolve: Resolver.ResolveResult // | undefined
 }
 export interface RequireDataBaseResolved extends RequireDataBase {
   resolve: Resolver.ResolveResult
+}
+export interface RequireDataBaseMaybeResolved extends RequireDataBase {
+  resolve: Resolver.ResolveResult | undefined
 }
 export interface RequireDataBase {
   literal: string

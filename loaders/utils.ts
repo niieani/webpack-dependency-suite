@@ -3,7 +3,6 @@ import * as fs from 'fs'
 import {memoize, MapCache} from 'lodash'
 import { AddLoadersQuery, AddLoadersMethod, RequireData, RequireDataBase, PathWithLoaders } from './definitions'
 import {
-  addBundleLoader,
   appendCodeAndCallback,
   expandAllRequiresForGlob,
   getRequireStrings,
@@ -11,6 +10,8 @@ import {
   wrapInRequireInclude
 } from './inject-utils';
 import {get} from 'lodash'
+import * as debug from 'debug'
+const log = debug('utils')
 
 const invalidationDebounceDirectory = new WeakMap<any, Map<string, NodeJS.Timer>>()
 export function cacheInvalidationDebounce(cacheKey: string, cache: MapCache, dictionaryKey: any, debounceMs = 10000) {
@@ -49,15 +50,30 @@ export interface GetFilesInDirOptions {
    * starting from the directory base without the leading './'
    */
   returnRelativeTo?: string
+  ignoreIfNotExists?: boolean
 }
 
 export async function getFilesInDirBase(directory: string, {
-      skipHidden = true, recursive = false, regexFilter = undefined, emitWarning = console.warn.bind(console), emitError = console.error.bind(console), fileSystem = fs, regexIgnore = [/node_modules/], returnRelativeTo = directory
+      skipHidden = true, recursive = false, regexFilter = undefined, emitWarning = console.warn.bind(console), emitError = console.error.bind(console), fileSystem = fs, regexIgnore = [/node_modules/], returnRelativeTo = directory, ignoreIfNotExists = false
     }: GetFilesInDirOptions = {}
   ): Promise<Array<{ filePath: string, stat: fs.Stats, relativePath: string }>> {
 
   if (!directory) {
     emitError(`No directory supplied`)
+    return []
+  }
+
+  const exists = await new Promise<fs.Stats | undefined>((resolve, reject) =>
+    fileSystem.stat(directory, (err, stat) =>
+      err ? resolve() :
+      resolve(stat)
+    )
+  )
+
+  if (!exists || !exists.isDirectory()) {
+    if (!ignoreIfNotExists) {
+      emitError(`The supplied directory does not exist ${directory}`)
+    }
     return []
   }
 
@@ -137,27 +153,37 @@ export function getResourcesFromList(json: Object, propertyPath: string) {
   return allResources
 }
 
-export async function getResourcesRecursively(tryRequestName: string, context: string, packagePropertyPath: string, recursive = false, processDependencies = false, literalsTried = [] as Array<string>): Promise<Array<RequireDataBase>> {
-  const {moduleName, remainingRequest} = splitRequest(tryRequestName)
+/*
+export async function getResourcesRecursively(tryRequestName: string, context: string, packagePropertyPath: string, loaderInstance: Webpack.Core.LoaderContext, recursive = false, literalsTried = [] as Array<string>): Promise<Array<RequireDataBase>> {
+  log(`getResourcesRecursively: ${tryRequestName}`)
+  const {moduleName, remainingRequest} = await splitRequest(tryRequestName, this)
+  let literal: string
+
   if (moduleName) {
-    literalsTried.push(`${moduleName}/${remainingRequest}`)
+    literal = `${moduleName}/${remainingRequest}`
   }
   else {
+    const nonRelative = path.join(tryRequestName)
     const nodeModulesStart = context.indexOf('node_modules')
-    if (nodeModulesStart >= 0)
-      literalsTried.push(`${context.slice(nodeModulesStart + 'node_modules'.length + 1)}/${tryRequestName}`)
-    else
-      literalsTried.push(`${context}/${tryRequestName}`)
+    literal = nodeModulesStart >= 0 ?
+      `${context.slice(nodeModulesStart + 'node_modules'.length + 1)}/${nonRelative}` :
+      `${context}/${nonRelative}`
   }
+
+  if (literalsTried.indexOf(literal) >= 0) return []
+  literalsTried.push(literal)
+
+  log(`literal: ${literal}`)
 
   // TODO: processDependencies
   const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
-    this.resolve(context, tryRequestName, (err, result, value) => err ? resolve() : resolve(value)));
+    loaderInstance.resolve(context, tryRequestName, (err, result, value) => err ? resolve() : resolve(value)));
   const resources = resolve ?
-    getResourcesFromList(resolve.descriptionFileData, packagePropertyPath).filter(r => literalsTried.indexOf(r.literal) === -1) :
+    getResourcesFromList(resolve.descriptionFileData, packagePropertyPath) ://.filter(r => literalsTried.indexOf(r.literal) === -1) :
     []
   return await concatPromiseResults(
-    resources.map(r => getResourcesRecursively(r.literal, resolve.descriptionFileRoot, packagePropertyPath, recursive, false, literalsTried))
+    resources.map(r => getResourcesRecursively(r.literal, resolve.descriptionFileRoot, packagePropertyPath, loaderInstance, recursive, literalsTried))
   )
   // TODO: dedupe, remove duplicates
 }
+*/

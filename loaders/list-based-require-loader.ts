@@ -1,22 +1,25 @@
+import { RequireData, RequireDataBase, RequireDataBaseResolved, RequireDataBaseMaybeResolved } from './definitions';
 import {
   addBundleLoader,
   appendCodeAndCallback,
   expandAllRequiresForGlob,
   getRequireStrings,
-  splitRequest,
+  resolveLiteral,
   wrapInRequireInclude
 } from './inject-utils';
 import * as SourceMap from 'source-map'
 import * as loaderUtils from 'loader-utils'
-import { concatPromiseResults, getResourcesFromList, getResourcesRecursively } from './utils';
+import { concatPromiseResults, getResourcesFromList } from './utils'
+import * as path from 'path'
 import * as debug from 'debug'
 const log = debug('list-based-require-loader')
 
 export interface ListBasedQuery {
   packagePropertyPath: string
-  recursiveProcessing?: boolean | undefined
-  processDependencies?: boolean | undefined
+  // recursiveProcessing?: boolean | undefined
+  // processDependencies?: boolean | undefined
   enableGlobbing?: boolean
+  rootDir?: string
 }
 
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
@@ -39,36 +42,65 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
    * 2. _.get to the object containing resource info
    * 3. include
    */
+  // log(`resourcePath: ${this.resourcePath}`)
+  // if (this.resourcePath) {
+  //   return this.callback(undefined, source, sourceMap)
+  // }
   try {
-    const allResources = await getResourcesRecursively(this.currentRequest, this.context, query.packagePropertyPath, query.recursiveProcessing, query.processDependencies)
-    // const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
-    //   this.resolve(this.context, this.currentRequest, (err, result, value) => err ? resolve() || this.emitWarning(`Error resolving: ${this.currentRequest}`) : resolve(value)));
+    const self = await resolveLiteral({ literal: this.resourcePath }, this)
+    if (!self.resolve) {
+      return this.callback(undefined, source, sourceMap)
+    }
 
-    // let allResources = getResourcesFromList(resolve.descriptionFileData, query.packagePropertyPath)
+    const resolve = self.resolve
+    const resources = resolve ?
+      getResourcesFromList(resolve.descriptionFileData, query.packagePropertyPath) :
+      []
 
-    // if (query.processDependencies) {
-    //   allResources.map(r => splitRequest(r.literal)).map(async r => {
-    //     const resolved = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
-    //       this.resolve(this.context, r.moduleName, (err, result, value) => err ? resolve() : resolve(value)));
-    //     if (resolved && resolved.descriptionFileRoot !== resolve.descriptionFileRoot) {
-    //       return getResourcesFromList(resolved.descriptionFileData, query.packagePropertyPath)
-    //     } else {
-    //       return []
-    //     }
-    //   })
-    // }
+    if (!resources.length) {
+      return this.callback(undefined, source, sourceMap)
+    }
 
-    let resourceData = await addBundleLoader(allResources, this, 'loaders')
+    // debugger
+    // const relativeResource = `./${path.relative(this.context, this.resourcePath)}`
+    // const allResources = await getResourcesRecursively(relativeResource /*this.currentRequest*/, this.context, query.packagePropertyPath, this, query.recursiveProcessing)
+    // const allResources = await getResourcesRecursively(relativeResource /*this.currentRequest*/, this.context, query.packagePropertyPath, this, query.recursiveProcessing)
+    let resourceData = await addBundleLoader(resources, 'loaders')
+
+    const isRootRequest = query.rootDir === resolve.descriptionFileRoot
+    log(`resourceData for ${this.resourcePath}`, resourceData.map(r => r.literal))
 
     if (query.enableGlobbing) {
-      resourceData = await expandAllRequiresForGlob(resourceData, this)
+      resourceData = await expandAllRequiresForGlob(resourceData, this, isRootRequest ? false : resolve.descriptionFileRoot)
     } else {
       resourceData = resourceData.filter(r => !r.literal.includes(`*`))
     }
 
-    log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
+    const resolvedResources = (await Promise.all(
+      resourceData.map(async r => {
+        let resource: RequireDataBaseMaybeResolved | null = null
+        const packageName = resolve.descriptionFileData && resolve.descriptionFileData.name
+        if (packageName && !path.isAbsolute(r.literal) && !isRootRequest) {
+          // resolve as MODULE_NAME/REQUEST_PATH
+          resource = await resolveLiteral(Object.assign({}, r, { literal: `${packageName}/${r.literal}` }), this, resolve.descriptionFileRoot, false)
+        }
+        // else {
+        //   log(`Would test: ${packageName}/${r.literal}`)
+        // }
+        if (!resource || !resource.resolve) {
+          // resolve as REQUEST_PATH
+          resource = await resolveLiteral(r, this, resolve.descriptionFileRoot, false)
+        }
+        if (!resource.resolve) {
+          return this.emitWarning(`Unable to resolve ${r.literal} in context of ${packageName}`)
+        }
+        return resource as RequireData
+      })
+    )).filter(r => !!r && r.resolve.path !== this.resourcePath) as Array<RequireData>
 
-    const requireStrings = await getRequireStrings(resourceData, undefined, this, true)
+    log(`Adding resources to ${this.resourcePath}: ${resolvedResources.map(r => r.literal).join(', ')}`)
+
+    let requireStrings = await getRequireStrings(resolvedResources, undefined, this, true)
     const inject = requireStrings.map(wrapInRequireInclude).join('\n')
     appendCodeAndCallback(this, source, inject, sourceMap)
   } catch (e) {

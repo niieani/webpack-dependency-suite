@@ -107,7 +107,7 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
   const allResources = [...commentsAndLiterals, ...commentOnlyImports]
 
   try {
-    let resourceData = await addBundleLoader(allResources, this)
+    let resourceData = await addBundleLoader(allResources)
 
     if (query.enableGlobbing) {
       resourceData = await expandAllRequiresForGlob(resourceData, this)

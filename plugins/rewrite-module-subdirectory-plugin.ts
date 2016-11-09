@@ -1,4 +1,5 @@
-import { splitRequest } from '../loaders/inject-utils';
+import { splitRequest } from '../loaders/inject-utils'
+import * as path from 'path'
 const log = require('debug')('rewrite-subdir-plugin')
 
 class RewriteModuleSubdirectoryPlugin {
@@ -6,8 +7,12 @@ class RewriteModuleSubdirectoryPlugin {
 
   apply(resolver) {
     const getIndexPath = this.getIndexPath
-    resolver.plugin('raw-module', (request, callback) => {
-      const { moduleName, remainingRequest } = splitRequest(request.request)
+    resolver.plugin('raw-module', async (request, callback) => {
+      // log(`rq: `, request)
+      if (path.isAbsolute(request.request))
+        return callback()
+
+      const { moduleName, remainingRequest } = await splitRequest(request.request)
       if (!moduleName)
         return callback()
       const newRequest = getIndexPath(moduleName, remainingRequest, request)

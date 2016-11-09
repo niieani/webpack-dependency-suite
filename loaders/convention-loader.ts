@@ -46,9 +46,9 @@ const conventions: { [convention: string]: ConventionFunction } = {
       .map(file => file.filePath)
   },
 
-  async 'list-based'(fullPath: string, query: ConventionQuery & { packageProperty: string }, loaderInstance: Webpack.Core.LoaderContext) {
+  // async 'list-based'(fullPath: string, query: ConventionQuery & { packageProperty: string }, loaderInstance: Webpack.Core.LoaderContext) {
 
-  },
+  // },
 }
 
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {

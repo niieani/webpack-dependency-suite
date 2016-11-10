@@ -45,25 +45,15 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
   }
 
   /**
-   * to list all already previously resources, iterate:
-   * loader._compilation.modules[0].resource (or userRequest ?)
-   * then loader._compilation.modules[0].issuer.resource / userRequest will contain the origin of the addition
-   */
-
-  /**
    * 1. resolve SELF to get the package.json contents
    * 2. _.get to the object containing resource info
    * 3. include
    */
-  // log(`resourcePath: ${this.resourcePath}`)
-  // if (this.resourcePath) {
-  //   return this.callback(undefined, source, sourceMap)
-  // }
   try {
     const self = await resolveLiteral({ literal: this.resourcePath }, this)
     const resolve = self.resolve
 
-    // only do require.include in the FIRST file that comes along
+    // only do require.include in the FIRST file that comes along, when that option is enabled
     const listBasedRequireDone: Set<string> = this._compilation.listBasedRequireDone || (this._compilation.listBasedRequireDone = new Set<string>())
     if (!resolve || (query.requireInFirstFileOnly && listBasedRequireDone.has(resolve.descriptionFileRoot))) {
       return this.callback(undefined, source, sourceMap)
@@ -79,10 +69,6 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
       return this.callback(undefined, source, sourceMap)
     }
 
-    // debugger
-    // const relativeResource = `./${path.relative(this.context, this.resourcePath)}`
-    // const allResources = await getResourcesRecursively(relativeResource /*this.currentRequest*/, this.context, query.packagePropertyPath, this, query.recursiveProcessing)
-    // const allResources = await getResourcesRecursively(relativeResource /*this.currentRequest*/, this.context, query.packagePropertyPath, this, query.recursiveProcessing)
     let resourceData = await addBundleLoader(resources, 'loaders')
 
     const isRootRequest = query.rootDir === resolve.descriptionFileRoot
@@ -103,9 +89,6 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
           // resolve as MODULE_NAME/REQUEST_PATH
           resource = await resolveLiteral(Object.assign({}, r, { literal: `${packageName}/${r.literal}` }), this, resolve.descriptionFileRoot, false)
         }
-        // else {
-        //   log(`Would test: ${packageName}/${r.literal}`)
-        // }
         if (!resource || !resource.resolve) {
           // resolve as REQUEST_PATH
           resource = await resolveLiteral(r, this, resolve.descriptionFileRoot, false)

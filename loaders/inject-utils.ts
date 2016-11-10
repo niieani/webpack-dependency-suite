@@ -23,6 +23,7 @@ export function appendCodeAndCallback(loader: Webpack.Core.LoaderContext, source
     const sourceMapConsumer = new SourceMapConsumer(sourceMap)
     const node = SourceNode.fromStringWithSourceMap(source, sourceMapConsumer)
 
+    // casting here because SourceMap is missing .append() in its typings
     ;(node as any).append(inject)
 
     const result = node.toStringWithSourceMap({
@@ -78,7 +79,6 @@ export async function splitRequest(literal: string, loaderInstance?: Webpack.Cor
 
 export async function expandGlobBase(literal: string, loaderInstance: Webpack.Core.LoaderContext, rootForRelativeResolving: string | false = path.dirname(loaderInstance.resourcePath)) {
   const { pathBits, remainingRequest, remainingRequestBits, moduleName, moduleRoot } = await splitRequest(literal, loaderInstance)
-  // const literalIsRelative = literal[0] === '.'
   let possibleRoots = loaderInstance.options.resolve.modules.filter((m: string) => path.isAbsolute(m)) as Array<string>
 
   const nextGlobAtIndex = remainingRequestBits.findIndex(pb => pb.includes(`*`))
@@ -86,19 +86,10 @@ export async function expandGlobBase(literal: string, loaderInstance: Webpack.Co
   const relativePathFromFirstGlob = remainingRequestBits.slice(nextGlobAtIndex).join(`/`)
 
   if (moduleName && moduleRoot) {
+    // TODO: add support for aliases when they point to a subdirectory
+    // Or maybe the resolve will already include it?
     possibleRoots = [moduleRoot]
-    // const moduleName = pathBits[0].startsWith(`@`) ? pathBits.slice(0, 2).join(`/`) : pathBits[0]
-    // if (moduleRoot) {
-      // TODO: add support for aliases when they point to a subdirectory
-      // Or maybe the resolve will already include it?
-      // const resolved = await resolveLiteral(Object.assign({ literal: moduleName }), loaderInstance, undefined, false /* do not emit warnings for bad resolves here */)
-      // const root = resolved.resolve && resolved.resolve.descriptionFileRoot
-      // if (root) {
-      //   possibleRoots = [root]
-      // }
-    // }
   } else if (rootForRelativeResolving) {
-    // possibleRoots = [path.join(path.dirname(loaderInstance.resourcePath), relativePathUntilFirstGlob)]
     possibleRoots = [rootForRelativeResolving, ...possibleRoots]
   }
 
@@ -111,12 +102,6 @@ export async function expandGlobBase(literal: string, loaderInstance: Webpack.Co
 
   possiblePaths = uniqBy(possiblePaths, 'filePath')
 
-  // let nonRelativePath = path.normalize(path.join(literal)) // removes ./ from the path
-  // while (nonRelativePath.startsWith('../')) {
-  //   loaderInstance.emitWarning(`Combining globbing with parent-path traversal is not supported: '${literal}'`)
-  //   nonRelativePath = nonRelativePath.slice(3)
-  // }
-
   // test case: escape('werwer/**/werwer/*.html').replace(/\//g, '[\\/]+').replace(/\\\*\\\*/g, '\.*?').replace(/\\\*/g, '[^/\\\\]*?')
   const globRegexString = escapeStringForRegex(relativePathFromFirstGlob)
     .replace(/\//g, '[\\/]+') // accept Windows and Unix slashes
@@ -126,30 +111,6 @@ export async function expandGlobBase(literal: string, loaderInstance: Webpack.Co
   const correctPaths = possiblePaths.filter(p => p.stat.isFile() && globRegex.test(p.relativePath))
 
   return correctPaths.map(p => p.filePath)
-
-/*
-  return resolveAllAndConcat<{
-    resolve: EnhancedResolve.ResolveResult | undefined;
-    literal: string;
-  }>(
-    correctPaths.map(
-      async p => await resolveLiteral({ literal: p.filePath }, loaderInstance)
-    )
-  )
-*/
-  // return Object.assign({}, r, { literal })
-  // let resolved = await resolveLiteral(Object.assign({}, r, { literal: pathUntilFirstGlob }), loaderInstance)
-  // resolved.resolve.path
-  // for (let pathBit of pathBits) {
-  //   if (!pathBit.includes(`*`)) {
-  //     pathUntilFirstGlob += `${pathBit}/`
-  //   }
-  // }
-  // let pathBit = pathBits.shift()
-  // while (!pathBit.includes(`*`)) {
-  //   pathUntilFirstGlob += `${pathBit}/`
-  //   pathBit = pathBits.shift()
-  // }
 }
 
 const expandGlob = memoize(expandGlobBase, (literal: string, loaderInstance: Webpack.Core.LoaderContext, rootForRelativeResolving = path.dirname(loaderInstance.resourcePath)) => {
@@ -174,6 +135,11 @@ export async function expandAllRequiresForGlob<T extends { literal: string }>(re
   return uniqBy(allDeglobbed, 'literal')
 }
 
+// TODO: function cleanUpPath
+// this func does: makes a relative path from absolute
+// OR strips all node_modules and makes a 'module' request path instead
+// USE IT in the above glob expansion or better yet, in the below getRequireString, so we have nice requests instead of full paths!
+
 export async function getRequireStrings(maybeResolvedRequires: Array<RequireData | { literal: string, resolve?: undefined }>, addLoadersMethod: AddLoadersMethod | undefined, loaderInstance: Webpack.Core.LoaderContext, forceFallbackLoaders = false): Promise<Array<string>> {
   const requires = (await Promise.all(maybeResolvedRequires.map(
     async r => !r.resolve ? await resolveLiteral(r, loaderInstance) : r
@@ -194,13 +160,10 @@ export async function getRequireStrings(maybeResolvedRequires: Array<RequireData
     pathsAndLoaders = requires.map(r => ({ literal: r.literal, loaders: r.loaders || r.fallbackLoaders || [], path: r.resolve.path }))
   }
 
-  // const resourceDir = path.dirname(loaderInstance.resourcePath)
   return pathsAndLoaders.map(p =>
     (p.loaders && p.loaders.length) ?
       `!${p.loaders.join('!')}!${p.literal}` :
       p.literal
-      // (`!${p.loaders.join('!')}!` + (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)) :
-      // (p.literal ? p.literal : `./${path.relative(resourceDir, p.path)}`)
   )
 }
 

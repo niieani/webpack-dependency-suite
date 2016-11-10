@@ -153,38 +153,3 @@ export function getResourcesFromList(json: Object, propertyPath: string) {
 
   return allResources
 }
-
-/*
-export async function getResourcesRecursively(tryRequestName: string, context: string, packagePropertyPath: string, loaderInstance: Webpack.Core.LoaderContext, recursive = false, literalsTried = [] as Array<string>): Promise<Array<RequireDataBase>> {
-  log(`getResourcesRecursively: ${tryRequestName}`)
-  const {moduleName, remainingRequest} = await splitRequest(tryRequestName, this)
-  let literal: string
-
-  if (moduleName) {
-    literal = `${moduleName}/${remainingRequest}`
-  }
-  else {
-    const nonRelative = path.join(tryRequestName)
-    const nodeModulesStart = context.indexOf('node_modules')
-    literal = nodeModulesStart >= 0 ?
-      `${context.slice(nodeModulesStart + 'node_modules'.length + 1)}/${nonRelative}` :
-      `${context}/${nonRelative}`
-  }
-
-  if (literalsTried.indexOf(literal) >= 0) return []
-  literalsTried.push(literal)
-
-  log(`literal: ${literal}`)
-
-  // TODO: processDependencies
-  const resolve = await new Promise<EnhancedResolve.ResolveResult>((resolve, reject) =>
-    loaderInstance.resolve(context, tryRequestName, (err, result, value) => err ? resolve() : resolve(value)));
-  const resources = resolve ?
-    getResourcesFromList(resolve.descriptionFileData, packagePropertyPath) ://.filter(r => literalsTried.indexOf(r.literal) === -1) :
-    []
-  return await concatPromiseResults(
-    resources.map(r => getResourcesRecursively(r.literal, resolve.descriptionFileRoot, packagePropertyPath, loaderInstance, recursive, literalsTried))
-  )
-  // TODO: dedupe, remove duplicates
-}
-*/

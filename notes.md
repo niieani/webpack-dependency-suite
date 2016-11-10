@@ -70,3 +70,12 @@ note:
 
 
 - template lint plugin
+
+
+
+
+/**
+  * to list all already previously resources, iterate:
+  * loader._compilation.modules[0].resource (or userRequest ?)
+  * then loader._compilation.modules[0].issuer.resource / userRequest will contain the origin of the addition
+  */

@@ -139,6 +139,7 @@ export interface ResourcesInput {
 
 export function getResourcesFromList(json: Object, propertyPath: string) {
   const resources = get(json, propertyPath, [] as Array<ResourcesInput | string>)
+  if (!resources.length) return []
 
   const allResources = [] as Array<RequireDataBase>
 

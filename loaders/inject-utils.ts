@@ -175,9 +175,9 @@ export async function expandAllRequiresForGlob<T extends { literal: string }>(re
 }
 
 export async function getRequireStrings(maybeResolvedRequires: Array<RequireData | { literal: string, resolve?: undefined }>, addLoadersMethod: AddLoadersMethod | undefined, loaderInstance: Webpack.Core.LoaderContext, forceFallbackLoaders = false): Promise<Array<string>> {
-  const requires = await Promise.all(maybeResolvedRequires.map(
+  const requires = (await Promise.all(maybeResolvedRequires.map(
     async r => !r.resolve ? await resolveLiteral(r, loaderInstance) : r
-  )) as Array<RequireData>
+  )) as Array<RequireData>).filter(r => !!r.resolve)
 
   type PathsAndLoadersWithLiterals = PathWithLoaders & {removed?: boolean, literal: string}
   let pathsAndLoaders: Array<PathsAndLoadersWithLiterals>

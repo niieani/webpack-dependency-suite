@@ -54,7 +54,7 @@ const conventions: { [convention: string]: ConventionFunction } = {
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   this.async()
 
-  const query = loaderUtils.parseQuery(this.query) as ConventionQuery
+  const query = Object.assign({}, this.options, loaderUtils.parseQuery(this.query)) as ConventionQuery
 
   if (this.cacheable) {
     this.cacheable()
@@ -117,7 +117,7 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
     const inject = requireStrings.map(wrapInRequireInclude).join('\n')
     return appendCodeAndCallback(this, source, inject, sourceMap)
   } catch (e) {
-    debug(e)
+    log(e)
     this.emitError(e.message)
     this.callback(undefined, source, sourceMap)
   }

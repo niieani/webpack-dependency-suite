@@ -8,6 +8,12 @@ const path = require('path');
 const log = require('debug')('config')
 const RewriteModuleSubdirectoryPlugin = require('./plugins/rewrite-module-subdirectory-plugin')
 const RootMostResolvePlugin = require('./plugins/root-most-resolve-plugin')
+const AureliaAddLoadersCallback = require('./test/aurelia').addLoadersMethod
+const rootDir = path.resolve()
+
+const addLoadersCallback = async (list, loaderInstance) => {
+  return await AureliaAddLoadersCallback(rootDir, list, loaderInstance)
+}
 
 module.exports = {
   entry: {
@@ -24,7 +30,10 @@ module.exports = {
         include: [path.resolve('app'), path.resolve('app-extra')],
         use: [
           {
-            loader: 'html-require-loader'
+            loader: 'html-require-loader',
+            options: {
+              addLoadersCallback
+            }
           }
         ]
       },
@@ -44,11 +53,14 @@ module.exports = {
       // },
       {
         test: /\.js$/,
-        include: [path.resolve('app')],
+        include: [/*path.resolve('app'), *//node_modules\/aurelia-/],
         use: [
           {
             loader: 'list-based-require-loader',
-            query: {
+            // query: {
+            // },
+            options: {
+              addLoadersCallback,
               packagePropertyPath: 'aurelia.build.resources',
               enableGlobbing: true,
               rootDir: path.resolve()
@@ -71,10 +83,18 @@ module.exports = {
         //   {
             loaders: [
               // 'babel',
-              'comment-loader',
+              {
+                loader: 'comment-loader',
+                options: {
+                  addLoadersCallback
+                }
+              },
               {
                 loader: 'convention-loader',
-                query: {
+                // query: {
+                // },
+                options: {
+                  addLoadersCallback,
                   convention: 'extension-swap'
                   // convention: function(fullPath) {
                   //   const path = require('path')

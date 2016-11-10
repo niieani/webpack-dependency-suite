@@ -31,8 +31,11 @@ const defaults = {
   enableGlobbing: true
 } as HtmlRequireQuery
 
-async function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
-  const query = Object.assign({}, defaults, loaderUtils.parseQuery(this.query)) as HtmlRequireQuery
+function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
+  if (this.cacheable) {
+    this.cacheable()
+  }
+  const query = Object.assign({}, defaults, this.options, loaderUtils.parseQuery(this.query)) as HtmlRequireQuery
   const source = htmlLoader.bind(this)(pureHtml, sourceMap) as string
 
   try {
@@ -41,23 +44,30 @@ async function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourc
       return source
     }
 
-    let resourceData = await addBundleLoader(resources)
-    log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
+    return (async () => {
+      this.async()
+      let resourceData = await addBundleLoader(resources)
+      log(`Adding resources to ${this.resourcePath}: ${resourceData.map(r => r.literal).join(', ')}`)
 
-    if (query.enableGlobbing) {
-      resourceData = await expandAllRequiresForGlob(resourceData, this)
-    } else {
-      resourceData = resourceData.filter(r => !r.literal.includes(`*`))
-    }
+      if (query.enableGlobbing) {
+        resourceData = await expandAllRequiresForGlob(resourceData, this)
+      } else {
+        resourceData = resourceData.filter(r => !r.literal.includes(`*`))
+      }
 
-    const requireStrings = await getRequireStrings(
-      resourceData, query.addLoadersCallback, this
-    )
+      const requireStrings = await getRequireStrings(
+        resourceData, query.addLoadersCallback, this
+      )
 
-    const inject = requireStrings.map(wrapInRequireInclude).join('\n')
-    return appendCodeAndCallback(this, source, inject, sourceMap, true)
+      const inject = requireStrings.map(wrapInRequireInclude).join('\n')
+      return appendCodeAndCallback(this, source, inject, sourceMap)
+    })().catch(e => {
+      log(e)
+      this.emitError(e.message)
+      return this.callback(undefined, source, sourceMap)
+    })
   } catch (e) {
-    debug(e)
+    log(e)
     this.emitError(e.message)
     return source
   }

@@ -1,4 +1,5 @@
 //import {computedFrom} from 'aurelia-framework';
+require('aurelia-templating-resources/css-resource')
 
 export class Welcome {
   constructor() {

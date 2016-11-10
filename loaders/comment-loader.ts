@@ -35,7 +35,7 @@ export interface CommentLoaderQuery extends AddLoadersQuery {
 }
 
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
-  const query = loaderUtils.parseQuery(this.query) as CommentLoaderQuery
+  const query = Object.assign({}, this.options, loaderUtils.parseQuery(this.query)) as CommentLoaderQuery
 
   if (this.cacheable) {
     this.cacheable()
@@ -70,7 +70,8 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
     } catch(e) {
       // ignore the error
       if (!i) {
-        throw e
+        this.emitError(`Error while parsing ${this.resourcePath}: ${e.message}`)
+        return this.callback(undefined, source, sourceMap)
       }
     }
   }
@@ -121,7 +122,7 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
     const inject = requireStrings.map(wrapInRequireInclude).join('\n')
     appendCodeAndCallback(this, source, inject, sourceMap)
   } catch (e) {
-    debug(e)
+    log(e)
     this.emitError(e.message)
     this.callback(undefined, source, sourceMap)
   }

@@ -26,7 +26,12 @@
           "resources/triple"
         ],
         "resources/glo*b/test-*.js",
-        "root-most"
+        "root-most",
+        {
+          "path": "aurelia-templating-resources/signal-binding-behavior",
+          "lazy": true,
+          "chunk": "aurelia"
+        }
       ]
     }
   },

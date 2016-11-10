@@ -1,4 +1,10 @@
-import { RequireData, RequireDataBase, RequireDataBaseResolved, RequireDataBaseMaybeResolved } from './definitions';
+import {
+  AddLoadersQuery,
+  RequireData,
+  RequireDataBase,
+  RequireDataBaseMaybeResolved,
+  RequireDataBaseResolved
+} from './definitions';
 import {
   addBundleLoader,
   appendCodeAndCallback,
@@ -14,18 +20,25 @@ import * as path from 'path'
 import * as debug from 'debug'
 const log = debug('list-based-require-loader')
 
-export interface ListBasedQuery {
+export interface ListBasedQuery extends AddLoadersQuery {
   packagePropertyPath: string
   // recursiveProcessing?: boolean | undefined
   // processDependencies?: boolean | undefined
   enableGlobbing?: boolean
   rootDir?: string
+
+  /**
+   * only add dependencies to the FIRST file of the given compilation, per each module
+   * TODO: add cache for when this is false (otherwise it can get really slow!)
+   */
+  requireInFirstFileOnly?: boolean
 }
 
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   this.async()
 
-  const query = loaderUtils.parseQuery(this.query) as ListBasedQuery
+  // add defaults:
+  const query = Object.assign({ requireInFirstFileOnly: true, enableGlobbing: false }, this.options, loaderUtils.parseQuery(this.query)) as ListBasedQuery
 
   if (this.cacheable) {
     this.cacheable()
@@ -48,11 +61,16 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
   // }
   try {
     const self = await resolveLiteral({ literal: this.resourcePath }, this)
-    if (!self.resolve) {
+    const resolve = self.resolve
+
+    // only do require.include in the FIRST file that comes along
+    const listBasedRequireDone: Set<string> = this._compilation.listBasedRequireDone || (this._compilation.listBasedRequireDone = new Set<string>())
+    if (!resolve || (query.requireInFirstFileOnly && listBasedRequireDone.has(resolve.descriptionFileRoot))) {
       return this.callback(undefined, source, sourceMap)
+    } else if (query.requireInFirstFileOnly) {
+      listBasedRequireDone.add(resolve.descriptionFileRoot)
     }
 
-    const resolve = self.resolve
     const resources = resolve ?
       getResourcesFromList(resolve.descriptionFileData, query.packagePropertyPath) :
       []
@@ -68,13 +86,14 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
     let resourceData = await addBundleLoader(resources, 'loaders')
 
     const isRootRequest = query.rootDir === resolve.descriptionFileRoot
-    log(`resourceData for ${this.resourcePath}`, resourceData.map(r => r.literal))
 
     if (query.enableGlobbing) {
       resourceData = await expandAllRequiresForGlob(resourceData, this, isRootRequest ? false : resolve.descriptionFileRoot)
     } else {
       resourceData = resourceData.filter(r => !r.literal.includes(`*`))
     }
+
+    // log(`resourceData for ${this.resourcePath}`, resourceData.map(r => r.literal))
 
     const resolvedResources = (await Promise.all(
       resourceData.map(async r => {
@@ -100,11 +119,11 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
 
     log(`Adding resources to ${this.resourcePath}: ${resolvedResources.map(r => r.literal).join(', ')}`)
 
-    let requireStrings = await getRequireStrings(resolvedResources, undefined, this, true)
+    let requireStrings = await getRequireStrings(resolvedResources, query.addLoadersCallback, this)
     const inject = requireStrings.map(wrapInRequireInclude).join('\n')
     appendCodeAndCallback(this, source, inject, sourceMap)
   } catch (e) {
-    debug(e)
+    log(e)
     this.emitError(e.message)
     this.callback(undefined, source, sourceMap)
   }

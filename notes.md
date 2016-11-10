@@ -1,23 +1,19 @@
 # Notes
 
 TODO:
-  - its enough if list-based require only cares about its OWN resources
-    resources of the request being made.
-
-  - generate duplicate of require.include plugin so that we can better name reasons when doing --display-reasons
-
-  - use the function in the webpack config in all loaders
-  - fork (or require) bundle loader https://github.com/webpack/bundle-loader/blob/master/index.js 
+  - better easy-webpack: config is an pure object AND a list of packages to be installed as dev-dependencies
+  - generator of require.include duplicate plugins, so that we can better name reasons when doing --display-reasons
+  - think about globs in comments
+  - (maybe) fork (or require) bundle loader https://github.com/webpack/bundle-loader/blob/master/index.js 
     and add a parameter, e.g. module.exports.SIGNIFIER = true
     so that its clear to the aurelia-loader its an unresolved method
-  - processDependencies for getResourcesRecursively
-  - when adding resources from list, allow them to be relative to package "main" 
-  - OR simply try resolving as ${module_name}/thing FIRST
-  - add the option to use the package.json dependencies only as the SINGLE SOURCE OF TRUTH, 
-    but not add any external dependencies from it for the local package (only for dependencies)
-  - use "options" instead of "query": https://github.com/webpack/webpack/commit/a53799c0ac58983860a27648cdc8519b6a562b89#commitcomment-19089585
+  - add tests for adding resources from list when they are relative to package's "main" (currently tries resolving as ${module_name}/thing FIRST)
+  - document the option to use the package.json dependencies only as the SINGLE SOURCE OF TRUTH, 
+    without adding any external dependencies from it for the local package (maybe: only for dependencies)
 
 note:
+- its enough if list-based require only cares about its OWN resources
+  resources of the request being made.
 - globbed paths MUST include extensions
 
 - require.include loaders:

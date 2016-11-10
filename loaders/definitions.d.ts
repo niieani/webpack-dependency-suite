@@ -1,8 +1,6 @@
 import * as SourceMap from 'source-map'
 import * as fs from 'fs'
-import * as Resolver from '../custom_typings/enhanced-resolve'
 import * as Webpack from '../custom_typings/webpack'
-// import Resolver = require('enhanced-resolve/lib/Resolver')
 
 export interface PathWithLoaders {
   path: string
@@ -20,10 +18,10 @@ export interface RequireData extends RequireDataBaseResolved {
   fallbackLoaders?: Array<string> | undefined
 }
 export interface RequireDataBaseResolved extends RequireDataBase {
-  resolve: Resolver.ResolveResult
+  resolve: EnhancedResolve.ResolveResult
 }
 export interface RequireDataBaseMaybeResolved extends RequireDataBase {
-  resolve: Resolver.ResolveResult | undefined
+  resolve: EnhancedResolve.ResolveResult | undefined
 }
 export interface RequireDataBase {
   literal: string
@@ -35,15 +33,3 @@ export interface AddLoadersQuery {
   addLoadersCallback?: AddLoadersMethod
   [customSetting: string]: any
 }
-
-/**
- * WEBPACK
- *
- * @export
- * @interface WebpackLoader
- */
-
-
-// interface Array<T> {
-//   filter<U extends T>(pred: (a: T) => a is U): U[];
-// }

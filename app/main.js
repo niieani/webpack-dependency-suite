@@ -6,5 +6,5 @@ export function configure(aurelia) {
   aurelia.start().then(aurelia.setRoot(/* @import */ 'app'));
 }
 
-// const context = require.context('./sub', true, /\.(ts|js)/);
+// const context = require.context('./resources', true, /\.(ts|js)/);
 // console.log(context.keys())

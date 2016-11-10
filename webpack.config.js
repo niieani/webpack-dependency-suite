@@ -154,6 +154,27 @@ module.exports = {
     // plugins: [new RootMostAliasPlugin('described-resolve', {}, 'resolve')]
   },
   plugins: [
+    new (require('./plugins/mapped-module-ids'))({
+      appDir: path.resolve('app'),
+      prefixLoaders: [{loader: 'bundle-loader', prefix: 'async'}],
+      logWhenRawRequestDiffers: true,
+      dotSlashWhenRelativeToAppDir: false,
+      beforeLoadersTransform: (moduleId) => {
+        if (!moduleId.startsWith('aurelia-')) return moduleId
+        return moduleId
+          .replace('/dist/native-modules', '')
+          .replace('/dist/commonjs', '')
+      },
+      afterExtensionTrimmingTransform: (moduleId) => {
+        if (!moduleId.startsWith('aurelia-')) return moduleId
+        const split = moduleId.split('/')
+        if (split.length === 2 && split[0] === split[1]) {
+          // aurelia uses custom main path
+          return split[0]
+        }
+        return moduleId
+      }
+    }),
     // This function is the `apply` function if you were to create an external plugin
     // Having it inline provides some nice conviences for debugging and development
     function() {

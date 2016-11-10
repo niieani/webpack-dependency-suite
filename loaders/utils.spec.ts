@@ -1,6 +1,5 @@
 import { expandGlobBase } from './inject-utils';
 import { getResourcesFromList } from './utils';
-// console.log(getResourcesFromList)
 
 describe('Resouce handling - ', () => {
   it(`loading`, () => {

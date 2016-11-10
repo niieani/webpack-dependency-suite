@@ -41,6 +41,7 @@ declare namespace Webpack {
       optional: boolean;
       building: any[];
       buildTimestamp: number;
+      libIdent(options: { context?: string }): string
     }
 
     export class MultiModule {
@@ -51,7 +52,7 @@ declare namespace Webpack {
       reasons: ModuleReason[];
       debugId: number;
       lastId: number;
-      id?: any;
+      id?: string | number | null;
       index?: any;
       index2?: any;
       used?: any;

@@ -4,8 +4,14 @@
     "target": "es2017",
     "noImplicitAny": false,
     "inlineSourceMap": true,
-    "allowJs": true,
-    "strictNullChecks": true,
-    "outDir": "dist"
-  }
+    "strictNullChecks": true
+  },
+  "exclude": [
+    ".idea",
+    ".vscode",
+    "node_modules",
+    "temp",
+    "test",
+    "test-fixtures"
+  ]
 }

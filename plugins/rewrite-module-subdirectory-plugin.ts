@@ -2,13 +2,15 @@ import { splitRequest } from '../loaders/inject-utils'
 import * as path from 'path'
 const log = require('debug')('rewrite-subdir-plugin')
 
-class RewriteModuleSubdirectoryPlugin {
-  constructor(public getIndexPath: (moduleName, remainingRequest, request) => string) {}
+/**
+ * Webpack Resolve plugin, used to check in additional places for the root directory of a given module
+ */
+export class RewriteModuleSubdirectoryPlugin {
+  constructor(public getIndexPath: (moduleName: string, remainingRequest: string, request: any) => string) {}
 
   apply(resolver) {
     const getIndexPath = this.getIndexPath
     resolver.plugin('raw-module', async (request, callback) => {
-      // log(`rq: `, request)
       if (path.isAbsolute(request.request))
         return callback()
 
@@ -25,8 +27,6 @@ class RewriteModuleSubdirectoryPlugin {
     })
   }
 }
-
-export = RewriteModuleSubdirectoryPlugin;
 
 
 // class DynamicMainPlugin {

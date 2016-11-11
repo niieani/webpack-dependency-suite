@@ -1,7 +1,7 @@
 {
-  "name": "webpack-developer-kit",
+  "name": "webpack-resolve-suite",
   "version": "1.0.0",
-  "description": "Super Light Dev Kit for Webpack Developers",
+  "description": "A set of Webpack plugins, loaders and utilities designed for advanced dependency resolution",
   "main": "",
   "scripts": {
     "dev": "webpack-dev-server --inline --content-base build/",
@@ -10,10 +10,11 @@
     "lint": "eslint .",
     "test": "jest",
     "test:unit": "jest",
-    "test:e2e": "jasmine e2e.spec.js",
+    "test:e2e": "jasmine test/e2e.spec.js",
     "debug": "node --harmony_async_await --inspect --debug-brk ./node_modules/webpack/bin/webpack.js --config webpack.config.js --watch"
   },
   "aurelia": {
+    "_note": "this is only here for testing purposes",
     "build": {
       "resources": [
         "resources/hello",
@@ -40,11 +41,12 @@
     "url": "git+https://github.com/blacksonic/babel-webpack-tree-shaking.git"
   },
   "keywords": [
-    "tree-shaking",
-    "babel",
     "webpack",
     "toolkit",
-    "developer"
+    "suite",
+    "plugin",
+    "loader",
+    "require.include"
   ],
   "author": {
     "name": "Bazyli Brzóska",
@@ -58,7 +60,7 @@
       "js"
     ],
     "transform": {
-      "^.+\\.(ts|tsx)$": "<rootDir>/preprocessor.js"
+      "^.+\\.(ts|tsx)$": "<rootDir>/test/preprocessor.js"
     },
     "testRegex": "\\.spec\\.(ts|tsx)$"
   },
@@ -72,7 +74,6 @@
     "@types/semver": "^5.3.30",
     "@types/webpack": "^1.12.35",
     "acorn": "^4.0.3",
-    "aurelia-templating-resources": "^1.1.1",
     "cheerio": "^0.22.0",
     "debug": "^2.3.0",
     "escape-string-regexp": "^1.0.5",
@@ -83,19 +84,11 @@
     "source-map": "^0.5.6"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.38",
-    "babel-core": "^6.18.2",
-    "babel-eslint": "^7.1.0",
-    "babel-loader": "^6.2.7",
-    "babel-preset-es2015": "^6.18.0",
-    "babel-preset-latest": "^6.16.0",
-    "babili": "^0.0.8",
-    "babili-webpack-plugin": "^0.0.7",
+    "aurelia-templating-resources": "^1.1.1",
     "chromedriver": "^2.25.1",
     "enhanced-resolve": "^2.3.0",
     "eslint": "^3.9.1",
     "file-loader": "^0.9.0",
-    "html-loader": "^0.4.4",
     "html-webpack-plugin": "^2.24.1",
     "http-server": "^0.9.0",
     "jasmine": "2.5.2",

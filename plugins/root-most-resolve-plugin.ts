@@ -1,7 +1,3 @@
-/*
-	MIT License http://www.opensource.org/licenses/mit-license.php
-	Author Tobias Koppers @sokra
-*/
 import createInnerCallback = require("enhanced-resolve/lib/createInnerCallback")
 import * as getInnerRequest from "enhanced-resolve/lib/getInnerRequest"
 import * as semver from 'semver'
@@ -9,8 +5,13 @@ import * as path from 'path'
 import * as debug from 'debug'
 const log = debug('root-most-alias')
 
-class RootMostResolvePlugin {
-  constructor(public context) {}
+/**
+ * @description Uses the root-most package instead of a nested node_modules package.
+ * Useful when doing 'npm link' for nested dependencies,
+ * so you can be sure all packages use the right copy of the given module.
+ */
+export class RootMostResolvePlugin {
+  constructor(public context: string) {}
 
   apply(resolver: EnhancedResolve.Resolver) {
     let context = this.context
@@ -63,5 +64,3 @@ class RootMostResolvePlugin {
     })
   }
 }
-
-export = RootMostResolvePlugin;

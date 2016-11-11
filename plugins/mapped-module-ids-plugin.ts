@@ -1,6 +1,6 @@
 import * as path from 'path'
 
-type LoaderInfo = { loader: string, prefix: string | false }
+export type LoaderInfo = { loader: string, prefix: string | false }
 type LoaderInfoResolve = EnhancedResolve.ResolveResult & LoaderInfo
 type LoaderInfoError = {error: Error} & LoaderInfo
 
@@ -13,7 +13,24 @@ function resolveLoader(compiler, origin, contextPath, loaderInfo: LoaderInfo) {
   );
 }
 
-export = class MappedModuleIds {
+/**
+ * Small description of how this plugin creates moduleIds:
+  *  uses module.rawRequest if it doesn't start with '.' or '!' and isn't path.isAbsolute
+  *  otherwise makes module ID relative to appDir
+  *  if necessary (see after rawRequest impl.):
+  *  cuts out '...../node_modules', in case it's nested, cut that nesting too
+  *  if the another module of the SAME name already exists, sends a WARNING
+  *  checks module.loaders[x].loader (that's a path) for loaders that need prefixing
+  *  then name looks e.g. like: 'async!whatever/lalala'
+  *  compares pure path with rawRequest and optionally LOGs if different
+  *
+  *  to use in a dynamic loader test: if ('async!my-thing' in __webpack_require__.m)
+  *  then based on existence: handle e.g. __webpack_require__('async!my-thing')
+  *
+  *  run optional path convertion methods (moduleId) => string
+  *  e.g. to strip .../dist/native-modules/...
+  */
+export class MappedModuleIdsPlugin {
   constructor (public options: {
     appDir: string
     prefixLoaders: Array<LoaderInfo>
@@ -46,25 +63,6 @@ export = class MappedModuleIds {
       compilation.plugin('before-module-ids', (modules: Array<Webpack.Core.NormalModule>) => {
         modules.forEach((module) => {
           if (module.id === null && module.libIdent) {
-            // MAYBE:
-            //    use module.rawRequest if it doesn't start with '.' or '!' and isn't path.isAbsolute
-            //    or compare with rawRequest and LOG if different
-            // else/better? use libIdent relative to appDir
-            // if necessary (see after rawRequest impl.):
-            // cut out and '...../node_modules', in case it's nested, cut that nesting too
-            // if the another module of the SAME name already exists, send a WARNING
-            // check module.loaders[x].loader (that's a path) for loaders that need prefixing
-            // then name: 'bundle!whatever/lalala'
-            //
-            // in loader test: if ('bundle!my-thing' in __webpack_require__.m)
-            // then based on existence: handle e.g. __webpack_require__('bundle!my-thing')
-            //
-            // run optional pathConvertion(fullPath) => string
-            // e.g. to strip .../dist/native-modules/...
-
-            // example output
-            // ../../../../node_modules/bundle-loader/index.js?lazy&name=aurelia!./node_modules/aurelia-templating-resources/dist/native-modules/signal-binding-behavior.js
-
             const requestSep = module.userRequest.split('!')
             const loadersUsed = requestSep.length > 1
             const userRequestLoaders = requestSep.slice(0, requestSep.length - 1)

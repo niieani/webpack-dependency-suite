@@ -3,7 +3,7 @@ import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 import * as cheerio from 'cheerio'
-import {addBundleLoader, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, SimpleDependency, expandAllRequiresForGlob} from './inject-utils'
+import {addBundleLoader, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, SimpleDependency, expandAllRequiresForGlob} from '../utils/inject'
 import * as htmlLoader from 'html-loader'
 import * as debug from 'debug'
 const log = debug('html-require-loader')

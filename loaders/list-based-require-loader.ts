@@ -12,10 +12,10 @@ import {
   getRequireStrings,
   resolveLiteral,
   wrapInRequireInclude
-} from './inject-utils';
+} from '../utils/inject';
 import * as SourceMap from 'source-map'
 import * as loaderUtils from 'loader-utils'
-import { concatPromiseResults, getResourcesFromList } from './utils'
+import { concatPromiseResults, getResourcesFromList } from '../utils'
 import * as path from 'path'
 import * as debug from 'debug'
 const log = debug('list-based-require-loader')

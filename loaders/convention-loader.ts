@@ -4,8 +4,8 @@ import * as fs from 'fs'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 import * as webpack from 'webpack'
-import {appendCodeAndCallback, getRequireStrings, resolveLiteral, wrapInRequireInclude, SimpleDependency} from './inject-utils'
-import {getFilesInDir} from './utils'
+import {appendCodeAndCallback, getRequireStrings, resolveLiteral, wrapInRequireInclude, SimpleDependency} from '../utils/inject'
+import {getFilesInDir} from '../utils'
 import * as debug from 'debug'
 const log = debug('convention-loader')
 

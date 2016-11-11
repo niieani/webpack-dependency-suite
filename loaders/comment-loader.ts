@@ -6,7 +6,7 @@ import * as acorn from 'acorn'
 import * as walk from 'acorn/dist/walk'
 import * as ESTree from 'estree'
 import * as debug from 'debug'
-import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveLiteral, addBundleLoader, SimpleDependency, expandAllRequiresForGlob} from './inject-utils'
+import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveLiteral, addBundleLoader, SimpleDependency, expandAllRequiresForGlob} from '../utils/inject'
 
 const log = debug('comment-loader')
 

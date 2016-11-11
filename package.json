@@ -1,5 +1,5 @@
 {
-  "name": "webpack-resolve-suite",
+  "name": "webpack-dependency-suite",
   "version": "1.0.0",
   "description": "A set of Webpack plugins, loaders and utilities designed for advanced dependency resolution",
   "main": "",

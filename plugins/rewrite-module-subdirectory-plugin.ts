@@ -1,4 +1,4 @@
-import { splitRequest } from '../loaders/inject-utils'
+import { splitRequest } from '../utils/inject'
 import * as path from 'path'
 const log = require('debug')('rewrite-subdir-plugin')
 

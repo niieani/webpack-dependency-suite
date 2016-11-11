@@ -1,5 +1,5 @@
-import createInnerCallback = require("enhanced-resolve/lib/createInnerCallback")
-import * as getInnerRequest from "enhanced-resolve/lib/getInnerRequest"
+import createInnerCallback = require('enhanced-resolve/lib/createInnerCallback')
+import * as getInnerRequest from 'enhanced-resolve/lib/getInnerRequest'
 import * as semver from 'semver'
 import * as path from 'path'
 import * as debug from 'debug'

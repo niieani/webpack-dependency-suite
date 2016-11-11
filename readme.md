@@ -1,13 +1,55 @@
-# webpack Developer Kit
-Super lightweight boilerplate tailored to help developers understand how to create custom loaders and plugins. 
-
-## Requirements
-* Node 6.3 or higher (for native `node --inspect`)
+# Webpack Dependency Suite
+A set of loaders, plugins and utilities designed to help with adding custom dependencies to your project.
 
 ## Usage
-Fork and clone this repo and then run `npm install`
+TODO.
 
-## NPM Scripts
+## Parts of the Suite
+
+### `require.include` loaders
+
+- comment-include-loader:
+```js
+    /* @import */ 'module'
+    /* @import @lazy @ */ 'module'
+    /* @import('thing\/*\/also\/works') @lazy @ */ 'module' // <<- globs will not work in comments cause of /**/ unless you escape slashes
+```
+- conventional-include-loader (include related files according to passed in function(fs)) [eg. like-named require loader for .html files]
+- template require loader
+    <require from="..." lazy bundle="abc"> (and others - configurable?)
+    add ${} globbing by:
+      - splitting path by '/'
+      - find first component where * is
+      - resolve previous one || contextDir
+      - get all files recursively
+      - split their paths '/'
+      - add all that match the regex 
+- explicit loader: 
+    adds all dependencies listed in a JSON file to a given, individual file (entry?)
+    expose a method to check if a path should override/add loaders by query configuration
+- note: globbed paths MUST include extensions
+
+### Resolve Plugins
+
+- resolve plugin for trying nested directories auto-resolve stuff (e.g. Aurelia's `/dist/es2015`)
+- resolve plugin to use root module from node_modules if version range satisfied
+
+### Normal Use Plugins
+
+- mapped relative moduleId plugin
+    sets ModuleID:
+      - use relative to any of config.modules (node_modules, app)
+      - no JS extensions
+      - rewrite paths for aurelia (strip /dist/node_modules/)
+      - strip nested node_modules/.../node_modules
+      - just do: package_name/request
+      - for /index do package_name
+      - name loader-based modules with a prefix: LOADER!NAME
+      - aurelia loader checks cache for normal module name, then for async!NAME
+    sets module.id relative to configured directory
+    optionally keeps extension (.js .ts)
+
+## Development / Debugging
 There are two scripts that are setup already: 
 
 * `npm run dev`
@@ -20,41 +62,6 @@ There are two scripts that are setup already:
 	* will run the same build with node debugger.
 	* paste provided link in Chrome (or Canary), and you will have the super incredible ChromeDevTools to step through your code for learning, exploration, and debugging. 
 
-## Whats in the config?
-You will notice **two things** that are setup already for you that should assist in learning to rapidly write custom plugins and loaders:
-
-* An `inline` webpack plugin already defined. You can use an anon. function inside of the plugins array which will then allow you to `plugin` to the `compiler` instance (which is `this`):
- 
-```javascript
-  plugins: [
-    // This function is the `apply` function if you were to create an external plugin
-    // Having it inline provides some nice conviences for debugging and development
-    function() {
-      var compiler = this;
-      compiler.plugin("compilation", function(compilation) {
-        compilation.plugin("after-optimize-modules", function(modules) {
-          // debugger;
-        });
-        compilation.plugin("after-optimize-chunks", function(chunks) {
-          // debugger;
-        })
-      });
-    }
-  ]
-```
-
-* A `custom-loader` in the project root, and configuration for resolving it so you can use. Loaders by default automatically resolve from `node_modules` and therefore the `resolveLoader` property on the config allows you to have an `alias`'d resolve for that loader so you can work on it right in your project. (Much easier than creating a npm module, npm link and npm link module-name):
-
-```javascript
-module.exports = loader;
-
-function loader(source) {
-  console.log(source);
-  debugger; 
-  return source;
-}
-```
-
 ## Helpful resources: 
 * [How to write a webpack loader](https://webpack.github.io/docs/how-to-write-a-loader.html)
 * [How to write a plugin](https://github.com/webpack/docs/wiki/How-to-write-a-plugin)
@@ -62,15 +69,5 @@ function loader(source) {
 * [webpack-sources](https://github.com/webpack/webpack-sources)
 * [enhanced-resolve](https://github.com/webpack/enhanced-resolve)
 
-## Questions, issues, comments?
-
-> _Sean, I have a great suggestion for this repo, or notice a bug_
-
-Submit an [issue](https://github.com/TheLarkInn/webpack-developer-kit/issues/new) or a [pull request](https://github.com/TheLarkInn/webpack-developer-kit/compare) for the feature. If I don't respond in a few days, tag me @TheLarkInn or [tweet me](https://twitter.com/TheLarkInn) at the same name (I'm terrible with email notifications).
-
-> _Sean, I want to know how to do this, or that with a loader or plugin_
-
-Please submit an issue to [the webpack core repository](https://github.com/webpack/webpack/issues/new). Most times, if you are trying to write a custom loader or plugin, one of the contributors or @Sokra, or myself will be able to provide you with guidance. Plus, if it is an undocumented, or poorly documented feature, then we will tag it as documentation and move a copy of it over to our [new docs page](https://github.com/webpack/webpack.io) (Or even better if you find out you can submit a PR to our doc page.)
-
 ## Recognition
-I came up with this idea after forking [blacksonics](https://github.com/TheLarkInn/webpack-developer-kit/commits/master/readme.md?author=blacksonic) babel-treeshaking test repo. As I was debugging it, I found that "Hey, this would be pretty useful for people who want to write their own stuff". Thus you will see in initial git history, his mark on files like the `readme`.
+The repository is based on the fantastic [webpack-developer-kit](https://github.com/TheLarkInn/webpack-developer-kit) by TheLarkInn, inspired by blacksonics. 

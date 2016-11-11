@@ -1,4 +1,4 @@
-import { AddLoadersQuery, PathWithLoaders } from './definitions'
+import { ConventionFunction, ConventionOptions, Convention } from './definitions'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as loaderUtils from 'loader-utils'
@@ -9,17 +9,8 @@ import {getFilesInDir} from '../utils'
 import * as debug from 'debug'
 const log = debug('convention-loader')
 
-export type ConventionFunction = (fullPath: string, query?: ConventionQuery, loaderInstance?: Webpack.Core.LoaderContext) => string | string[] | Promise<string | string[]>
-export type Convention = 'extension-swap' | ConventionFunction
-
-export interface ConventionQuery extends AddLoadersQuery {
-  convention: Convention | Array<Convention>
-  extension?: string | string[]
-  [customSetting: string]: any
-}
-
 const conventions: { [convention: string]: ConventionFunction } = {
-  'extension-swap'(fullPath: string, query: ConventionQuery) {
+  'extension-swap'(fullPath: string, query: ConventionOptions) {
     const basename = path.basename(fullPath)
     const noExtension = basename.substr(0, basename.lastIndexOf('.')) || basename
     let extensions: string[]
@@ -32,7 +23,7 @@ const conventions: { [convention: string]: ConventionFunction } = {
     return extensions.map(extension => path.join(basepath, noExtension + extension))
   },
 
-  async 'all-files-matching-regex'(fullPath: string, query: ConventionQuery & {regex: RegExp, directory: string}, loaderInstance: Webpack.Core.LoaderContext) {
+  async 'all-files-matching-regex'(fullPath: string, query: ConventionOptions & {regex: RegExp, directory: string}, loaderInstance: Webpack.Core.LoaderContext) {
     const files = await getFilesInDir(query.directory, {
       regexFilter: query.regex,
       emitWarning: loaderInstance.emitWarning.bind(loaderInstance),
@@ -54,7 +45,7 @@ const conventions: { [convention: string]: ConventionFunction } = {
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   this.async()
 
-  const query = Object.assign({}, this.options, loaderUtils.parseQuery(this.query)) as ConventionQuery
+  const query = Object.assign({}, this.options, loaderUtils.parseQuery(this.query)) as ConventionOptions
 
   if (this.cacheable) {
     this.cacheable()

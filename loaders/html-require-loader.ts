@@ -1,20 +1,13 @@
-import { AddLoadersQuery, AddLoadersMethod, RequireData, RequireDataBase } from './definitions'
+import { SelectorAndAttribute, HtmlRequireOptions, RequireDataBase } from './definitions'
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
 import * as cheerio from 'cheerio'
 import {addBundleLoader, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, SimpleDependency, expandAllRequiresForGlob} from '../utils/inject'
+import {getTemplateResourcesData} from '../utils'
 import * as htmlLoader from 'html-loader'
 import * as debug from 'debug'
 const log = debug('html-require-loader')
-
-export type SelectorAndAttribute = { selector: string, attribute: string }
-
-export interface HtmlRequireQuery extends AddLoadersQuery {
-  selectorsAndAttributes: Array<SelectorAndAttribute>
-  globReplaceRegex?: RegExp | undefined
-  enableGlobbing?: boolean
-}
 
 const defaults = {
   selectorsAndAttributes: [
@@ -29,13 +22,13 @@ const defaults = {
   // by default glob template string: e.g. '${anything}'
   globReplaceRegex: /\${.+?}/g,
   enableGlobbing: true
-} as HtmlRequireQuery
+} as HtmlRequireOptions
 
 function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
   if (this.cacheable) {
     this.cacheable()
   }
-  const query = Object.assign({}, defaults, this.options, loaderUtils.parseQuery(this.query)) as HtmlRequireQuery
+  const query = Object.assign({}, defaults, this.options, loaderUtils.parseQuery(this.query)) as HtmlRequireOptions
   const source = htmlLoader.bind(this)(pureHtml, sourceMap) as string
 
   try {
@@ -71,37 +64,6 @@ function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?:
     this.emitError(e.message)
     return source
   }
-}
-
-/**
- * Generates list of dependencies based on the passed in selectors, e.g.:
- * - <require from="paths">
- * - <template view-model="./file"></template>
- * - <template view="file.html"></template>
- */
-export function getTemplateResourcesData(html: string, selectorsAndAttributes: Array<SelectorAndAttribute>, globRegex: RegExp | undefined) {
-  const $ = cheerio.load(html) // { decodeEntities: false }
-
-  function extractRequire(context: Cheerio, fromAttribute = 'from') {
-    const resources: Array<RequireDataBase> = []
-    context.each(index => {
-      let path: string = context[index].attribs[fromAttribute]
-      if (!path) return
-      if (globRegex && globRegex.test(path)) {
-        path = path.replace(globRegex, `*`)
-      }
-      const lazy = context[index].attribs.hasOwnProperty('lazy')
-      const chunk = (context[index].attribs['bundle'] || context[index].attribs['chunk']) as string
-      resources.push({ literal: path, lazy, chunk })
-    })
-    return resources
-  }
-
-  const resourcesArray = selectorsAndAttributes
-    .map(saa => extractRequire($(saa.selector), saa.attribute))
-
-  const resources = ([] as RequireDataBase[]).concat(...resourcesArray)
-  return resources
 }
 
 module.exports = loader

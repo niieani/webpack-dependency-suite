@@ -1,4 +1,4 @@
-import { AddLoadersQuery, AddLoadersMethod, RequireData } from './definitions'
+import { CommentLoaderOptions } from './definitions'
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
@@ -29,13 +29,8 @@ function findLiteralNodesAfterBlockComment(ast: ESTree.Program, comments: Array<
     .filter(comment => !!comment.literal)
 }
 
-export interface CommentLoaderQuery extends AddLoadersQuery {
-  alwaysUseCommentBundles?: boolean
-  enableGlobbing?: boolean
-}
-
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
-  const query = Object.assign({}, this.options, loaderUtils.parseQuery(this.query)) as CommentLoaderQuery
+  const query = Object.assign({}, this.options, loaderUtils.parseQuery(this.query)) as CommentLoaderOptions
 
   if (this.cacheable) {
     this.cacheable()

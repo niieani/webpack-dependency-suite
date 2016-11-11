@@ -1,7 +1,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import {memoize, MapCache} from 'lodash'
-import { AddLoadersQuery, AddLoadersMethod, RequireData, RequireDataBase, PathWithLoaders } from '../loaders/definitions'
+import { AddLoadersOptions, AddLoadersMethod, RequireData, RequireDataBase, PathWithLoaders, SelectorAndAttribute } from '../loaders/definitions'
 import {
   appendCodeAndCallback,
   expandAllRequiresForGlob,
@@ -152,4 +152,35 @@ export function getResourcesFromList(json: Object, propertyPath: string) {
   })
 
   return allResources
+}
+
+/**
+ * Generates list of dependencies based on the passed in selectors, e.g.:
+ * - <require from="paths">
+ * - <template view-model="./file"></template>
+ * - <template view="file.html"></template>
+ */
+export function getTemplateResourcesData(html: string, selectorsAndAttributes: Array<SelectorAndAttribute>, globRegex: RegExp | undefined) {
+  const $ = cheerio.load(html) // { decodeEntities: false }
+
+  function extractRequire(context: Cheerio, fromAttribute = 'from') {
+    const resources: Array<RequireDataBase> = []
+    context.each(index => {
+      let path: string = context[index].attribs[fromAttribute]
+      if (!path) return
+      if (globRegex && globRegex.test(path)) {
+        path = path.replace(globRegex, `*`)
+      }
+      const lazy = context[index].attribs.hasOwnProperty('lazy')
+      const chunk = (context[index].attribs['bundle'] || context[index].attribs['chunk']) as string
+      resources.push({ literal: path, lazy, chunk })
+    })
+    return resources
+  }
+
+  const resourcesArray = selectorsAndAttributes
+    .map(saa => extractRequire($(saa.selector), saa.attribute))
+
+  const resources = ([] as RequireDataBase[]).concat(...resourcesArray)
+  return resources
 }

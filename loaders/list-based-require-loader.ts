@@ -1,10 +1,11 @@
 import {
-  AddLoadersQuery,
+  AddLoadersOptions,
   RequireData,
   RequireDataBase,
   RequireDataBaseMaybeResolved,
-  RequireDataBaseResolved
-} from './definitions';
+  RequireDataBaseResolved,
+  ListBasedRequireOptions
+} from './definitions'
 import {
   addBundleLoader,
   appendCodeAndCallback,
@@ -12,7 +13,7 @@ import {
   getRequireStrings,
   resolveLiteral,
   wrapInRequireInclude
-} from '../utils/inject';
+} from '../utils/inject'
 import * as SourceMap from 'source-map'
 import * as loaderUtils from 'loader-utils'
 import { concatPromiseResults, getResourcesFromList } from '../utils'
@@ -20,25 +21,11 @@ import * as path from 'path'
 import * as debug from 'debug'
 const log = debug('list-based-require-loader')
 
-export interface ListBasedQuery extends AddLoadersQuery {
-  packagePropertyPath: string
-  // recursiveProcessing?: boolean | undefined
-  // processDependencies?: boolean | undefined
-  enableGlobbing?: boolean
-  rootDir?: string
-
-  /**
-   * only add dependencies to the FIRST file of the given compilation, per each module
-   * TODO: add cache for when this is false (otherwise it can get really slow!)
-   */
-  requireInFirstFileOnly?: boolean
-}
-
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   this.async()
 
   // add defaults:
-  const query = Object.assign({ requireInFirstFileOnly: true, enableGlobbing: false }, this.options, loaderUtils.parseQuery(this.query)) as ListBasedQuery
+  const query = Object.assign({ requireInFirstFileOnly: true, enableGlobbing: false }, this.options, loaderUtils.parseQuery(this.query)) as ListBasedRequireOptions
 
   if (this.cacheable) {
     this.cacheable()

@@ -2,6 +2,42 @@ import * as SourceMap from 'source-map'
 import * as fs from 'fs'
 import * as Webpack from '../custom_typings/webpack'
 
+export interface CommentLoaderOptions extends AddLoadersOptions {
+  alwaysUseCommentBundles?: boolean
+  enableGlobbing?: boolean
+}
+
+export type ConventionFunction = (fullPath: string, query?: ConventionOptions, loaderInstance?: Webpack.Core.LoaderContext) => string | string[] | Promise<string | string[]>
+export type Convention = 'extension-swap' | ConventionFunction
+
+export interface ConventionOptions extends AddLoadersOptions {
+  convention: Convention | Array<Convention>
+  extension?: string | string[]
+  [customSetting: string]: any
+}
+
+export type SelectorAndAttribute = { selector: string, attribute: string }
+
+export interface HtmlRequireOptions extends AddLoadersOptions {
+  selectorsAndAttributes: Array<SelectorAndAttribute>
+  globReplaceRegex?: RegExp | undefined
+  enableGlobbing?: boolean
+}
+
+export interface ListBasedRequireOptions extends AddLoadersOptions {
+  packagePropertyPath: string
+  // recursiveProcessing?: boolean | undefined
+  // processDependencies?: boolean | undefined
+  enableGlobbing?: boolean
+  rootDir?: string
+
+  /**
+   * only add dependencies to the FIRST file of the given compilation, per each module
+   * TODO: add cache for when this is false (otherwise it can get really slow!)
+   */
+  requireInFirstFileOnly?: boolean
+}
+
 export interface PathWithLoaders {
   path: string
   /**
@@ -29,7 +65,7 @@ export interface RequireDataBase {
   chunk?: string
 }
 
-export interface AddLoadersQuery {
+export interface AddLoadersOptions {
   addLoadersCallback?: AddLoadersMethod
   [customSetting: string]: any
 }

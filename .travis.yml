@@ -11,8 +11,12 @@ cache:
 before_install:
   # Repo for newer Node.js versions
   - npm install -g yarn
-before_script:
+install:
   - yarn
+before_script:
+  - yarn run build
+script:
+  - yarn run test
 after_success:
   - yarn run semantic-release
 branches:

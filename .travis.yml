@@ -1,0 +1,20 @@
+sudo: false
+notifications:
+  email: false
+language: node_js
+node_js:
+  - '7'
+cache:
+  directories:
+    - $HOME/.yarn-cache
+    - node_modules
+before_install:
+  # Repo for newer Node.js versions
+  - npm install -g yarn
+before_script:
+  - yarn
+after_success:
+  - yarn run semantic-release
+branches:
+  except:
+    - /^v\d+\.\d+\.\d+$/

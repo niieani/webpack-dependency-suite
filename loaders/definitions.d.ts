@@ -19,7 +19,7 @@ export interface ConventionOptions extends AddLoadersOptions {
 export type SelectorAndAttribute = { selector: string, attribute: string }
 
 export interface HtmlRequireOptions extends AddLoadersOptions {
-  selectorsAndAttributes: Array<SelectorAndAttribute>
+  selectorsAndAttributes?: Array<SelectorAndAttribute>
   globReplaceRegex?: RegExp | undefined
   enableGlobbing?: boolean
 }

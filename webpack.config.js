@@ -11,6 +11,7 @@ const RootMostResolvePlugin = require('./plugins/root-most-resolve-plugin').Root
 const MappedModuleIdsPlugin = require('./plugins/mapped-module-ids-plugin').MappedModuleIdsPlugin
 const AureliaAddLoadersCallback = require('./example/aurelia').addLoadersMethod
 const rootDir = path.resolve()
+const appDir = path.resolve(`test-fixtures/app`)
 
 const addLoadersCallback = async (list, loaderInstance) => {
   return await AureliaAddLoadersCallback(rootDir, list, loaderInstance)
@@ -28,7 +29,7 @@ module.exports = {
     rules: [
       {
         test: /\.html$/,
-        include: [path.resolve('test-fixtures/app'), path.resolve('test-fixtures/app-extra')],
+        include: [appDir, path.resolve('test-fixtures/app-extra')],
         use: [
           {
             loader: 'html-require-loader',
@@ -49,7 +50,7 @@ module.exports = {
             query: {
               convention: 'all-files-matching-regex',
               regex: /\.js$/,
-              directory: path.resolve('app-extra')
+              directory: path.resolve('test-fixtures/app-extra')
             }
           },
         ],
@@ -57,7 +58,7 @@ module.exports = {
       */
       {
         test: /\.js$/,
-        include: [/*path.resolve('test-fixtures/app'), *//node_modules\/aurelia-/],
+        include: [/*appDir, *//node_modules\/aurelia-/],
         use: [
           {
             loader: 'list-based-require-loader',
@@ -75,7 +76,7 @@ module.exports = {
       // must always return JavaScript (as it is then processed into the compilation)
       {
         test: /\.js$/,
-        include: [path.resolve('test-fixtures/app'), path.resolve('test-fixtures/app-extra')],
+        include: [appDir, path.resolve('test-fixtures/app-extra')],
         loaders: [
           {
             loader: 'comment-loader',
@@ -133,7 +134,7 @@ module.exports = {
   },
   plugins: [
     new MappedModuleIdsPlugin({
-      appDir: path.resolve('app'),
+      appDir: appDir,
       prefixLoaders: [{loader: 'bundle-loader', prefix: 'async'}],
       logWhenRawRequestDiffers: true,
       dotSlashWhenRelativeToAppDir: false,
@@ -154,7 +155,7 @@ module.exports = {
       }
     }),
     new HtmlWebpackPlugin({
-      template: './app/index.html',
+      template: './test-fixtures/app/index.html',
     }),
   ],
   devtool: false,

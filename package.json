@@ -5,13 +5,13 @@
   "main": "",
   "scripts": {
     "dev": "webpack-dev-server --inline --content-base build/",
-    "build": "rimraf ./dist && node --harmony_async_await ./node_modules/webpack/bin/webpack.js --config webpack.config.js",
-    "webpack": "node --harmony_async_await ./node_modules/webpack/bin/webpack.js --config webpack.config.js",
+    "build": "rimraf ./dist && node --harmony_async_await ./node_modules/webpack/bin/webpack.js",
+    "webpack": "node --harmony_async_await ./node_modules/webpack/bin/webpack.js",
     "lint": "eslint .",
     "test": "jest",
     "test:unit": "jest",
     "test:e2e": "jasmine test/e2e.spec.js",
-    "debug": "node --harmony_async_await --inspect --debug-brk ./node_modules/webpack/bin/webpack.js --config webpack.config.js --watch"
+    "debug": "node --harmony_async_await --inspect --debug-brk ./node_modules/webpack/bin/webpack.js --watch"
   },
   "aurelia": {
     "_note": "this is only here for testing purposes",

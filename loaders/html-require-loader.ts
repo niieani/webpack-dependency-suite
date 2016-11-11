@@ -28,7 +28,7 @@ function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?:
   if (this.cacheable) {
     this.cacheable()
   }
-  const query = Object.assign({}, defaults, this.options, loaderUtils.parseQuery(this.query)) as HtmlRequireOptions
+  const query = Object.assign({}, defaults, this.options || loaderUtils.parseQuery(this.query)) as HtmlRequireOptions & {selectorsAndAttributes: Array<SelectorAndAttribute>}
   const source = htmlLoader.bind(this)(pureHtml, sourceMap) as string
 
   try {

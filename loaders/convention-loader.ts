@@ -45,7 +45,7 @@ const conventions: { [convention: string]: ConventionFunction } = {
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   this.async()
 
-  const query = Object.assign({}, this.options, loaderUtils.parseQuery(this.query)) as ConventionOptions
+  const query = Object.assign({}, this.options || loaderUtils.parseQuery(this.query)) as ConventionOptions
 
   if (this.cacheable) {
     this.cacheable()

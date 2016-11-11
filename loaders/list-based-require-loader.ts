@@ -25,7 +25,7 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
   this.async()
 
   // add defaults:
-  const query = Object.assign({ requireInFirstFileOnly: true, enableGlobbing: false }, this.options, loaderUtils.parseQuery(this.query)) as ListBasedRequireOptions
+  const query = Object.assign({ requireInFirstFileOnly: true, enableGlobbing: false }, this.options || loaderUtils.parseQuery(this.query)) as ListBasedRequireOptions
 
   if (this.cacheable) {
     this.cacheable()

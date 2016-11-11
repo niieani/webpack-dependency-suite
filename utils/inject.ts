@@ -1,8 +1,8 @@
-import { AddLoadersMethod, PathWithLoaders, RequireData, RequireDataBase } from './definitions'
+import { AddLoadersMethod, PathWithLoaders, RequireData, RequireDataBase } from '../loaders/definitions'
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
-import { getFilesInDir, concatPromiseResults, cacheInvalidationDebounce } from './utils'
+import { getFilesInDir, concatPromiseResults, cacheInvalidationDebounce } from './index'
 import ModuleDependency = require('webpack/lib/dependencies/ModuleDependency')
 import escapeStringForRegex = require('escape-string-regexp')
 import {memoize, uniqBy} from 'lodash'

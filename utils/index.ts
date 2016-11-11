@@ -1,14 +1,14 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import {memoize, MapCache} from 'lodash'
-import { AddLoadersQuery, AddLoadersMethod, RequireData, RequireDataBase, PathWithLoaders } from './definitions'
+import { AddLoadersQuery, AddLoadersMethod, RequireData, RequireDataBase, PathWithLoaders } from '../loaders/definitions'
 import {
   appendCodeAndCallback,
   expandAllRequiresForGlob,
   getRequireStrings,
   splitRequest,
   wrapInRequireInclude
-} from './inject-utils';
+} from './inject';
 import {get} from 'lodash'
 import * as debug from 'debug'
 const log = debug('utils')

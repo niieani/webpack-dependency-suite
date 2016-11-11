@@ -91,7 +91,7 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
         }
         if (!resource || !resource.resolve) {
           // resolve as REQUEST_PATH
-          resource = await resolveLiteral(r, this, resolve.descriptionFileRoot, false)
+          resource = await resolveLiteral(r, this, resolve.descriptionFileRoot, false) as RequireDataBaseMaybeResolved
         }
         if (!resource.resolve) {
           return this.emitWarning(`Unable to resolve ${r.literal} in context of ${packageName}`)

@@ -4,14 +4,16 @@
     "target": "es2017",
     "noImplicitAny": false,
     "inlineSourceMap": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "lib": [
+      "dom", "es2017"
+    ]
   },
   "exclude": [
     ".idea",
     ".vscode",
     "node_modules",
     "temp",
-    "test",
     "test-fixtures"
   ]
 }

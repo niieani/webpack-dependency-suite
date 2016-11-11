@@ -3,3 +3,8 @@ node_modules
 dist/
 *.log
 test-fixtures/webpack-dist
+loaders/*.js
+example/*.js
+plugins/*.js
+utils/*.js
+/index.js

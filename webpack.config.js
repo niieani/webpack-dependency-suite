@@ -112,7 +112,7 @@ module.exports = {
       'html-require-loader': require.resolve('./loaders/html-require-loader'),
       'list-based-require-loader': require.resolve('./loaders/list-based-require-loader'),
     },
-    extensions: [".webpack-loader.js", ".web-loader.js", ".loader.js", ".js", ".ts"]
+    extensions: [".ts", ".webpack-loader.js", ".web-loader.js", ".loader.js", ".js"]
   },
   resolve: {
     modules: [

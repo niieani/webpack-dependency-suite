@@ -1,5 +1,5 @@
-import { concatPromiseResults, getResourcesFromList } from '../loaders/utils'
-import { addBundleLoader, expandAllRequiresForGlob, resolveLiteral } from '../loaders/inject-utils'
+import { concatPromiseResults, getResourcesFromList } from '../utils'
+import { addBundleLoader, expandAllRequiresForGlob, resolveLiteral } from '../utils/inject'
 import { PathWithLoaders, RequireData, RequireDataBaseResolved } from '../loaders/definitions'
 import * as path from 'path'
 import * as debug from 'debug'

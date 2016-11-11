@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "webpack-dev-server --inline --content-base build/",
-    "build": "tsc -p . -t es5",
+    "prebuild": "rimraf ./loaders/*.js ./plugins/*.js ./utils/*.js",
+    "build": "tsc -p . -t es5 --listFiles",
     "webpack:build": "rimraf ./test-fixtures/webpack-dist && node --harmony_async_await ./node_modules/webpack/bin/webpack.js",
     "webpack": "node --harmony_async_await ./node_modules/webpack/bin/webpack.js",
     "test": "jest",

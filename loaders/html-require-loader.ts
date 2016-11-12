@@ -2,7 +2,6 @@ import { SelectorAndAttribute, HtmlRequireOptions, RequireDataBase } from './def
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
-import * as cheerio from 'cheerio'
 import {addBundleLoader, getRequireStrings, wrapInRequireInclude, appendCodeAndCallback, SimpleDependency, expandAllRequiresForGlob} from '../utils/inject'
 import {getTemplateResourcesData} from '../utils'
 import * as htmlLoader from 'html-loader'
@@ -28,7 +27,7 @@ function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?:
   if (this.cacheable) {
     this.cacheable()
   }
-  const query = Object.assign({}, defaults, this.options || loaderUtils.parseQuery(this.query)) as HtmlRequireOptions & {selectorsAndAttributes: Array<SelectorAndAttribute>}
+  const query = Object.assign({}, defaults, loaderUtils.parseQuery(this.query)) as HtmlRequireOptions & {selectorsAndAttributes: Array<SelectorAndAttribute>}
   const source = htmlLoader.bind(this)(pureHtml, sourceMap) as string
 
   try {

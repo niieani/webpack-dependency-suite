@@ -23,8 +23,7 @@ export function appendCodeAndCallback(loader: Webpack.Core.LoaderContext, source
     const sourceMapConsumer = new SourceMapConsumer(sourceMap)
     const node = SourceNode.fromStringWithSourceMap(source, sourceMapConsumer)
 
-    // casting here because SourceMap is missing .append() in its typings
-    ;(node as any).append(inject)
+    node.add(inject)
 
     const result = node.toStringWithSourceMap({
       file: currentRequest

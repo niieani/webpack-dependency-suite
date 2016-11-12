@@ -45,14 +45,14 @@ const conventions: { [convention: string]: ConventionFunction } = {
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   this.async()
 
-  const query = Object.assign({}, this.options || loaderUtils.parseQuery(this.query)) as ConventionOptions
+  const query = Object.assign({}, loaderUtils.parseQuery(this.query)) as ConventionOptions
 
   if (this.cacheable) {
     this.cacheable()
   }
 
   if (!query || !query.convention) {
-    this.emitError(`No convention defined, passing through`)
+    this.emitError(`No convention defined, passing through: ${this.currentRequest} / ${this.request}`)
     this.callback(undefined, source, sourceMap)
     return
   }

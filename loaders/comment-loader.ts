@@ -30,7 +30,7 @@ function findLiteralNodesAfterBlockComment(ast: ESTree.Program, comments: Array<
 }
 
 async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
-  const query = Object.assign({}, this.options || loaderUtils.parseQuery(this.query)) as CommentLoaderOptions
+  const query = Object.assign({}, loaderUtils.parseQuery(this.query)) as CommentLoaderOptions
 
   if (this.cacheable) {
     this.cacheable()

@@ -3,7 +3,7 @@
     "module": "commonjs",
     "target": "es2017",
     "noImplicitAny": false,
-    "inlineSourceMap": true,
+    "inlineSourceMap": false,
     "strictNullChecks": true,
     "lib": [
       "dom", "es2017"

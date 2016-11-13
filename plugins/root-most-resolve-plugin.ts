@@ -11,26 +11,35 @@ const log = debug('root-most-alias')
  * so you can be sure all packages use the right copy of the given module.
  */
 export class RootMostResolvePlugin {
-  constructor(public context: string) {}
+  constructor(public context: string, public force?: boolean, public overwriteInvalidSemVer = true) {}
 
   apply(resolver: EnhancedResolve.Resolver) {
     let context = this.context
+    let force = this.force
+    let overwriteInvalidSemVer = this.overwriteInvalidSemVer
+
     resolver.plugin('resolved', async function (originalResolved: EnhancedResolve.ResolveResult, callback) {
+      if (originalResolved.context['rootMostResolve']) {
+        // do not loop!
+        return callback(null, originalResolved)
+      }
+
       const previousPathSep = originalResolved.path.split(path.sep)
       const nodeModulesCount = previousPathSep.filter(p => p === 'node_modules').length
-      if (nodeModulesCount <= 1) {
+      const relativeToContext = path.relative(context, originalResolved.path)
+      if (!force && !relativeToContext.includes(`..`) && nodeModulesCount <= 1) {
         return callback(null, originalResolved)
       }
       const lastNodeModulesAt = previousPathSep.lastIndexOf('node_modules')
       const actualRequestPath = previousPathSep.slice(lastNodeModulesAt + 1).join('/')
-      // log(originalResolved.path, actualRequestPath, originalResolved.context)
 
-      if (!originalResolved.context.issuer) {
+      if (!originalResolved.context || !originalResolved.context.issuer) {
         return callback(null, originalResolved)
       }
+
       const issuer = await new Promise<EnhancedResolve.ResolveResult | undefined>((resolve, reject) =>
         resolver.doResolve('resolve',
-          { context: {}, path: originalResolved.context.issuer, request: originalResolved.context.issuer }, `resolve issuer of ${originalResolved.path}`, (err, value) => err ? resolve() : resolve(value)));
+          { context: { rootMostResolve: true }, path: originalResolved.context.issuer, request: originalResolved.context.issuer }, `resolve issuer of ${originalResolved.path}`, (err, value) => err ? resolve() : resolve(value)));
 
       if (!issuer) {
         return callback(null, originalResolved)
@@ -38,7 +47,7 @@ export class RootMostResolvePlugin {
 
       const resolvedInParentContext = await new Promise<EnhancedResolve.ResolveResult | undefined>((resolve, reject) =>
         resolver.doResolve('resolve', {
-          context: originalResolved.context,
+          context: {}, // originalResolved.context,
           path: context,
           request: actualRequestPath
         }, `resolve ${actualRequestPath} in ${context}`, createInnerCallback((err, value) => err ? resolve() : resolve(value), callback, null)));
@@ -50,11 +59,16 @@ export class RootMostResolvePlugin {
       const resolvedVersion = resolvedInParentContext.descriptionFileData && resolvedInParentContext.descriptionFileData.version
       const packageName = resolvedInParentContext.descriptionFileData && resolvedInParentContext.descriptionFileData.name
       const allowedRange = issuer.descriptionFileData.dependencies[packageName]
-      log(`Analyzing whether package ${packageName}=${allowedRange} can be substituted by a parent version ${resolvedVersion}`)
+      const isValidRange = semver.validRange(allowedRange)
 
-      if (resolvedVersion && packageName && allowedRange && semver.satisfies(resolvedVersion, allowedRange, true)) {
+      log(`Analyzing whether package ${packageName}@${allowedRange} can be substituted by a parent version ${resolvedVersion}`)
+
+      if (!isValidRange)
+        log(`Package ${packageName} has an invalid SemVer range, ${overwriteInvalidSemVer ? 'overwriting anyway' : 'not overwriting'}`)
+
+      if (resolvedVersion && packageName && allowedRange && ((!isValidRange && overwriteInvalidSemVer) || semver.satisfies(resolvedVersion, allowedRange, true))) {
         const firstNodeModulesAt = previousPathSep.indexOf('node_modules')
-        const actualOldRequestPath = previousPathSep.slice(firstNodeModulesAt + 1).join('/')
+        const actualOldRequestPath = relativeToContext
 
         log(`Rewriting ${actualOldRequestPath} with ${actualRequestPath}`)
         return callback(null, resolvedInParentContext)

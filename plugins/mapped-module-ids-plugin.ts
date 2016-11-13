@@ -34,13 +34,27 @@ export class MappedModuleIdsPlugin {
   constructor (public options: {
     appDir: string
     prefixLoaders: Array<LoaderInfo>
-    logWhenRawRequestDiffers?: boolean
     dotSlashWhenRelativeToAppDir?: boolean
     beforeLoadersTransform?: (currentModuleId: string, module?: Webpack.Core.NormalModule) => string
     afterLoadersTransform?: (currentModuleId: string, module?: Webpack.Core.NormalModule) => string
     afterExtensionTrimmingTransform?: (currentModuleId: string, module?: Webpack.Core.NormalModule) => string
     keepAllExtensions?: boolean
-  }) {}
+    logWhenRawRequestDiffers?: boolean
+    warnOnNestedSubmodules?: boolean
+    /**
+     * RegExp or function, return true if you want to ignore the module
+     */
+    ignore?: RegExp | ((module: Webpack.Core.NormalModule) => boolean)
+  }) {
+    const ignore = options.ignore
+    if (ignore) {
+      this.ignoreMethod = typeof ignore === 'function' ? ignore : (module) => {
+        return ignore.test(module.rawRequest)
+      }
+    }
+  }
+
+  ignoreMethod: ((module: Webpack.Core.NormalModule) => boolean) | undefined
 
   apply(compiler) {
     if (!this.options.appDir) {
@@ -48,7 +62,7 @@ export class MappedModuleIdsPlugin {
     }
 
     let resolvedLoaders = [] as Array<LoaderInfoResolve>
-    const beforeRunStep = async (compiler, callback) => {
+    const beforeRunStep = async (compilingOrWatching, callback) => {
       const resolved = await Promise.all(this.options.prefixLoaders.map(
         (loaderName) => resolveLoader(compiler, {}, compiler.options.context, loaderName)
       ))
@@ -62,7 +76,7 @@ export class MappedModuleIdsPlugin {
     compiler.plugin('compilation', (compilation) => {
       compilation.plugin('before-module-ids', (modules: Array<Webpack.Core.NormalModule>) => {
         modules.forEach((module) => {
-          if (module.id === null && module.libIdent) {
+          if (module.id === null && (!this.ignoreMethod || !this.ignoreMethod(module))) {
             const requestSep = module.userRequest.split('!')
             const loadersUsed = requestSep.length > 1
             const userRequestLoaders = requestSep.slice(0, requestSep.length - 1)
@@ -79,7 +93,7 @@ export class MappedModuleIdsPlugin {
             const lastMentionOfNodeModules = moduleId.lastIndexOf('node_modules')
             if (lastMentionOfNodeModules >= 0) {
               const firstMentionOfNodeModules = moduleId.indexOf('node_modules')
-              if (firstMentionOfNodeModules != lastMentionOfNodeModules) {
+              if (this.options.warnOnNestedSubmodules && firstMentionOfNodeModules != lastMentionOfNodeModules) {
                 console.warn(`Path is a nested node_modules`)
               }
               // cut out node_modules
@@ -111,7 +125,7 @@ export class MappedModuleIdsPlugin {
               const wasInUserRequest = userRequestLoaderPaths.find(loaderPath => loaderPath === loader.loader)
               if (!resolved || resolved.prefix === '' || resolved.prefix === undefined) {
                 if (wasInUserRequest)
-                  console.warn(`Warning: Keeping '${module.rawRequest}' without the loader prefix '${loader.loader}'. Explicitly silence these warnings by defining the loader in MappedModuleIds plugin's configuration`)
+                  console.warn(`Warning: Keeping '${module.rawRequest}' without the loader prefix '${loader.loader}'. Explicitly silence these warnings by defining the loader in MappedModuleIdsPlugin configuration`)
                 return
               }
               // actively supress prefixing when false
@@ -155,14 +169,6 @@ export class MappedModuleIdsPlugin {
             }
 
             module.id = moduleId
-
-            // module.id = module.libIdent({
-            //   context: compiler.options.context
-            // });
-            // console.log(module.id)
-            // module.id = module.libIdent({
-            //   context: this.options.context || compiler.options.context
-            // });
           }
         });
       });

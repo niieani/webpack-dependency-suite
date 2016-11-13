@@ -1,6 +1,7 @@
 export * from './plugins/mapped-module-ids-plugin'
 export * from './plugins/rewrite-module-subdirectory-plugin'
 export * from './plugins/root-most-resolve-plugin'
+export * from './plugins/convention-invalidate-plugin'
 export * from './utils'
 export * from './utils/inject'
 export * from './loaders/definitions'

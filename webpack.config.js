@@ -10,6 +10,7 @@ const RewriteModuleSubdirectoryPlugin = require('./plugins/rewrite-module-subdir
 const RootMostResolvePlugin = require('./plugins/root-most-resolve-plugin').RootMostResolvePlugin
 const MappedModuleIdsPlugin = require('./plugins/mapped-module-ids-plugin').MappedModuleIdsPlugin
 const AureliaAddLoadersCallback = require('./example/aurelia').addLoadersMethod
+const ConventionInvalidatePlugin = require('./plugins/convention-invalidate-plugin').ConventionInvalidatePlugin
 const rootDir = path.resolve()
 const appDir = path.resolve(`test-fixtures/app`)
 
@@ -157,6 +158,9 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './test-fixtures/app/index.html',
     }),
+    new ConventionInvalidatePlugin((watchResult) => {
+      return watchResult
+    })
   ],
   devtool: false,
 };

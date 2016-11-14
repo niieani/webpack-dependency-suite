@@ -164,23 +164,17 @@ export function getResourcesFromList(json: Object, propertyPath: string) {
 export function getTemplateResourcesData(html: string, selectorsAndAttributes: Array<SelectorAndAttribute>, globRegex: RegExp | undefined) {
   const $ = cheerio.load(html) // { decodeEntities: false }
 
-  function unwrap(s: string | undefined) {
-    if (s && s.startsWith('\\"'))
-      return s = s.slice(2, s.length - 2) // cut out surrounding quotes
-    return s
-  }
-
   function extractRequire(context: Cheerio, fromAttribute = 'from') {
     const resources: Array<RequireDataBase> = []
     context.each(index => {
-      let path = unwrap(context[index].attribs[fromAttribute])
+      let path = context[index].attribs[fromAttribute] as string | undefined
       if (!path) return
 
       if (globRegex && globRegex.test(path)) {
         path = path.replace(globRegex, `*`)
       }
       const lazy = context[index].attribs.hasOwnProperty('lazy')
-      const chunk = unwrap(context[index].attribs['bundle'] || context[index].attribs['chunk'])
+      const chunk = context[index].attribs['bundle'] || context[index].attribs['chunk']
       resources.push({ literal: path, lazy, chunk })
     })
     return resources

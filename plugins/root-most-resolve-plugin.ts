@@ -3,7 +3,7 @@ import * as getInnerRequest from 'enhanced-resolve/lib/getInnerRequest'
 import * as semver from 'semver'
 import * as path from 'path'
 import * as debug from 'debug'
-const log = debug('root-most-alias')
+const log = debug('root-most-resolve-plugin')
 
 /**
  * @description Uses the root-most package instead of a nested node_modules package.
@@ -67,10 +67,7 @@ export class RootMostResolvePlugin {
         log(`Package ${packageName} has an invalid SemVer range, ${overwriteInvalidSemVer ? 'overwriting anyway' : 'not overwriting'}`)
 
       if (resolvedVersion && packageName && allowedRange && ((!isValidRange && overwriteInvalidSemVer) || semver.satisfies(resolvedVersion, allowedRange, true))) {
-        const firstNodeModulesAt = previousPathSep.indexOf('node_modules')
-        const actualOldRequestPath = relativeToContext
-
-        log(`Rewriting ${actualOldRequestPath} with ${actualRequestPath}`)
+        log(`Rewriting ${relativeToContext} with ${actualRequestPath}`)
         return callback(null, resolvedInParentContext)
       } else {
         return callback(null, originalResolved)

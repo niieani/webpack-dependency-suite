@@ -43,7 +43,7 @@ export class TransformWatchFileSystem {
       const watchedFiles = this.watcher.fileWatchers.map(watcher => watcher.path)
       const toInvalidate = this.getInvalidationList([filePath], watchedFiles, this.compiler)
       toInvalidate.forEach(file => callbackUndelayed(file, changeTime))
-      callbackUndelayed.apply(this.compiler, arguments)
+      callbackUndelayed.call(this.compiler, filePath, changeTime)
     })
   }
 }

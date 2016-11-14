@@ -46,13 +46,13 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
   const POSSIBLE_AST_OPTIONS = [{
     ranges: true,
     locations: true,
-    ecmaVersion: 6,
+    ecmaVersion: 2017,
     sourceType: 'module',
     onComment: comments
   }, {
     ranges: true,
     locations: true,
-    ecmaVersion: 6,
+    ecmaVersion: 2017,
     sourceType: 'script',
     onComment: comments
   }] as Array<acorn.Options>

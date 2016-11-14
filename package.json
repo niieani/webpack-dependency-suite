@@ -76,11 +76,11 @@
     "@types/webpack": "^1.12.35",
     "acorn": "^4.0.3",
     "cheerio": "^0.22.0",
-    "debug": "^2.3.0",
+    "debug": "^2.3.2",
     "escape-string-regexp": "^1.0.5",
     "html-loader": "^0.4.4",
     "loader-utils": "^0.2.16",
-    "lodash": "^4.16.6",
+    "lodash": "^4.17.0",
     "semver": "^5.3.0",
     "source-map": "^0.5.6"
   },
@@ -88,19 +88,18 @@
     "aurelia-templating-resources": "^1.1.1",
     "chromedriver": "^2.25.1",
     "enhanced-resolve": "^2.3.0",
-    "eslint": "^3.9.1",
     "file-loader": "^0.9.0",
     "html-webpack-plugin": "^2.24.1",
     "http-server": "^0.9.0",
     "jasmine": "2.5.2",
-    "jest": "^17.0.0",
+    "jest": "^17.0.1",
     "rimraf": "^2.5.4",
     "selenium-webdriver": ">=3.0.1",
-    "semantic-release": "^4.3.5",
+    "semantic-release": "^6.3.1",
     "ts-node": "^1.7.0",
     "typescript": "^2.1",
-    "webpack": "^2.1.0-beta.25",
-    "webpack-dev-server": "^2.1.0-beta.0",
-    "webpack-sources": "^0.1.2"
+    "webpack": "^2.1.0-beta.26",
+    "webpack-dev-server": "^2.1.0-beta.11",
+    "webpack-sources": "^0.1.3"
   }
 }

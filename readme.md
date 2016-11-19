@@ -8,6 +8,8 @@ TODO.
 
 ### `require.include` loaders
 
+These are a bit like [baggage-loader](https://github.com/deepsweet/baggage-loader) but more configurable and advanced.
+
 - comment-include-loader:
 ```js
     /* @import */ 'module'
@@ -17,7 +19,7 @@ TODO.
 - conventional-include-loader (include related files according to passed in function(fs)) [eg. like-named require loader for .html files]
 - template require loader
     <require from="..." lazy bundle="abc"> (and others - configurable?)
-    add ${} globbing by:
+    ${} globbing by:
       - splitting path by '/'
       - find first component where * is
       - resolve previous one || contextDir

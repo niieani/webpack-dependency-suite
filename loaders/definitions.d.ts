@@ -30,6 +30,10 @@ export interface ListBasedRequireOptions extends AddLoadersOptions {
   // processDependencies?: boolean | undefined
   enableGlobbing?: boolean
   rootDir?: string
+  /**
+   * Useful setting to true when using linked modules
+   */
+  fallbackToMainContext?: boolean
 
   /**
    * only add dependencies to the FIRST file of the given compilation, per each module

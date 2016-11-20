@@ -72,16 +72,37 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
       resourceData.map(async r => {
         let resource: RequireDataBaseMaybeResolved | null = null
         const packageName = resolve.descriptionFileData && resolve.descriptionFileData.name
-        if (packageName && !path.isAbsolute(r.literal) && !isRootRequest) {
-          // resolve as MODULE_NAME/REQUEST_PATH
-          resource = await resolveLiteral(Object.assign({}, r, { literal: `${packageName}/${r.literal}` }), this, resolve.descriptionFileRoot, false)
+        const tryContexts = [resolve.descriptionFileRoot, ...(query.fallbackToMainContext ? [query.rootDir] : [])]
+        let contextDir: string | undefined
+        let tryCount = 0
+        const isSameModuleRequest = packageName && (r.literal.startsWith(`${packageName}/`) || r.literal === packageName)
+
+        while ((!resource || !resource.resolve) && (contextDir = tryContexts.shift())) {
+          if (!isSameModuleRequest && packageName && !path.isAbsolute(r.literal) && !isRootRequest) {
+            const literal = `${packageName}/${r.literal}`
+            // resolve as MODULE_NAME/REQUEST_PATH
+            resource = await resolveLiteral(Object.assign({}, r, { literal }), this, contextDir, false)
+            log(`[${resource && resource.resolve ? 'SUCCESS' : 'FAIL'}] [${++tryCount}] '${literal}' in '${contextDir}'`)
+          }
+          if (!resource || !resource.resolve) {
+            // resolve as REQUEST_PATH
+            resource = await resolveLiteral(r, this, contextDir, false) as RequireDataBaseMaybeResolved
+            log(`[${resource && resource.resolve ? 'SUCCESS' : 'FAIL'}] [${++tryCount}] '${r.literal}' in '${contextDir}'`)
+          }
         }
         if (!resource || !resource.resolve) {
-          // resolve as REQUEST_PATH
-          resource = await resolveLiteral(r, this, resolve.descriptionFileRoot, false) as RequireDataBaseMaybeResolved
-        }
-        if (!resource.resolve) {
           return this.emitWarning(`Unable to resolve ${r.literal} in context of ${packageName}`)
+        }
+
+        if (!resource.literal.startsWith('.') && (resource.resolve.descriptionFileData && resource.resolve.descriptionFileData.name) === packageName) {
+          // we're dealing with a request from within the same package
+          // let's make sure its relative:
+          let relativeLiteral = path.relative(path.dirname(resolve.path), resource.resolve.path)
+          if (!relativeLiteral.startsWith('..')) {
+            relativeLiteral = `./${relativeLiteral}`
+          }
+          log(`Mapped an internal module-based literal to a relative one: ${resource.literal} => ${relativeLiteral}`)
+          resource.literal = relativeLiteral
         }
         return resource as RequireData
       })

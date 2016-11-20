@@ -76,7 +76,7 @@ export class MappedModuleIdsPlugin {
     compiler.plugin('compilation', (compilation) => {
       compilation.plugin('before-module-ids', (modules: Array<Webpack.Core.NormalModule>) => {
         modules.forEach((module) => {
-          if (module.id === null && (!this.ignoreMethod || !this.ignoreMethod(module))) {
+          if (module.userRequest && module.id === null && (!this.ignoreMethod || !this.ignoreMethod(module))) {
             const requestSep = module.userRequest.split('!')
             const loadersUsed = requestSep.length > 1
             const userRequestLoaders = requestSep.slice(0, requestSep.length - 1)

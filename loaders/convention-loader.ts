@@ -1,4 +1,4 @@
-import { ConventionFunction, ConventionOptions, Convention } from './definitions'
+import { ConventionFunction, ConventionOptions, Convention } from '../typings/definitions'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as loaderUtils from 'loader-utils'

@@ -1,6 +1,6 @@
 import { concatPromiseResults, getResourcesFromList } from '../utils'
 import { addBundleLoader, expandAllRequiresForGlob, resolveLiteral } from '../utils/inject'
-import { PathWithLoaders, RequireData, RequireDataBaseResolved } from '../loaders/definitions'
+import { PathWithLoaders, RequireData, RequireDataBaseResolved } from '../typings/definitions'
 import * as path from 'path'
 import * as debug from 'debug'
 const log = debug('aurelia')

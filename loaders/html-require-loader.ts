@@ -1,4 +1,4 @@
-import { SelectorAndAttribute, HtmlRequireOptions, RequireDataBase } from './definitions'
+import { SelectorAndAttribute, HtmlRequireOptions, RequireDataBase } from '../typings/definitions'
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'

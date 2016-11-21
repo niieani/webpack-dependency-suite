@@ -1,4 +1,4 @@
-import { AddLoadersMethod, PathWithLoaders, RequireData, RequireDataBase } from '../loaders/definitions'
+import { AddLoadersMethod, PathWithLoaders, RequireData, RequireDataBase } from '../typings/definitions'
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'
@@ -194,7 +194,7 @@ export function addBundleLoader<T extends RequireDataBase>(resources: Array<T>, 
 }
 
 // TODO: use custom ModuleDependency instead of injecting code
-class SimpleDependencyClass extends ModuleDependency {
+export class SimpleDependencyClass extends ModuleDependency {
   module: Webpack.Core.NormalModule
   type = 'simple-dependency'
   constructor(request: string) {
@@ -203,7 +203,7 @@ class SimpleDependencyClass extends ModuleDependency {
   }
 }
 
-class SimpleDependencyTemplate {
+export class SimpleDependencyTemplate {
   apply(parentDependency: SimpleDependencyClass, source: Webpack.WebpackSources.ReplaceSource, outputOptions: { pathinfo }, requestShortener: { shorten: (request: string) => string }) {
     debugger
     if (outputOptions.pathinfo && parentDependency.module) {

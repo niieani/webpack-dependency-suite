@@ -1,4 +1,4 @@
-import { CommentLoaderOptions } from './definitions'
+import { CommentLoaderOptions } from '../typings/definitions'
 import * as path from 'path'
 import * as loaderUtils from 'loader-utils'
 import * as SourceMap from 'source-map'

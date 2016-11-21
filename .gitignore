@@ -8,3 +8,8 @@ example/*.js
 plugins/*.js
 utils/*.js
 /index.js
+loaders/*.d.ts
+example/*.d.ts
+plugins/*.d.ts
+utils/*.d.ts
+/index.d.ts

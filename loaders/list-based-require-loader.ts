@@ -5,7 +5,7 @@ import {
   RequireDataBaseMaybeResolved,
   RequireDataBaseResolved,
   ListBasedRequireOptions
-} from './definitions'
+} from '../typings/definitions'
 import {
   addBundleLoader,
   appendCodeAndCallback,

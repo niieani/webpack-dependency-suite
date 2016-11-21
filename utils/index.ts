@@ -2,7 +2,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as cheerio from 'cheerio'
 import {memoize, MapCache} from 'lodash'
-import { AddLoadersOptions, AddLoadersMethod, RequireData, RequireDataBase, PathWithLoaders, SelectorAndAttribute } from '../loaders/definitions'
+import { AddLoadersOptions, AddLoadersMethod, RequireData, RequireDataBase, PathWithLoaders, SelectorAndAttribute } from '../typings/definitions'
 import {
   appendCodeAndCallback,
   expandAllRequiresForGlob,

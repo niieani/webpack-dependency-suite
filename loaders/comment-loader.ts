@@ -10,7 +10,7 @@ import {appendCodeAndCallback, getRequireStrings, wrapInRequireInclude, resolveL
 
 const log = debug('comment-loader')
 
-function findLiteralNodesAfterBlockComment(ast: ESTree.Program, comments: Array<acorn.Comment>, commentRegex: RegExp) {
+export function findLiteralNodesAfterBlockComment(ast: ESTree.Program, comments: Array<acorn.Comment>, commentRegex: RegExp) {
   return comments
     .filter(comment => comment.type === 'Block')
     .map(commentAst => {
@@ -29,7 +29,7 @@ function findLiteralNodesAfterBlockComment(ast: ESTree.Program, comments: Array<
     .filter(comment => !!comment.literal)
 }
 
-async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
+export default async function CommentLoader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   const query = Object.assign({}, loaderUtils.parseQuery(this.query)) as CommentLoaderOptions
 
   if (this.cacheable) {
@@ -122,5 +122,3 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
     this.callback(undefined, source, sourceMap)
   }
 }
-
-module.exports = loader;

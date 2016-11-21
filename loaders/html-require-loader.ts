@@ -8,7 +8,7 @@ import * as htmlLoader from 'html-loader'
 import * as debug from 'debug'
 const log = debug('html-require-loader')
 
-const defaults = {
+export const htmlRequireDefaults = {
   selectorsAndAttributes: [
     // e.g. <require from="./file">
     // e.g. <require from="bootstrap" lazy bundle="vendor">
@@ -23,11 +23,11 @@ const defaults = {
   enableGlobbing: true
 } as HtmlRequireOptions
 
-function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
+export default function HtmlRequireLoader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?: SourceMap.RawSourceMap) {
   if (this.cacheable) {
     this.cacheable()
   }
-  const query = Object.assign({}, defaults, loaderUtils.parseQuery(this.query)) as HtmlRequireOptions & {selectorsAndAttributes: Array<SelectorAndAttribute>}
+  const query = Object.assign({}, htmlRequireDefaults, loaderUtils.parseQuery(this.query)) as HtmlRequireOptions & {selectorsAndAttributes: Array<SelectorAndAttribute>}
   const source = htmlLoader.bind(this)(pureHtml, sourceMap) as string
 
   try {
@@ -64,5 +64,3 @@ function loader (this: Webpack.Core.LoaderContext, pureHtml: string, sourceMap?:
     return source
   }
 }
-
-module.exports = loader

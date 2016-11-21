@@ -21,7 +21,7 @@ import * as path from 'path'
 import * as debug from 'debug'
 const log = debug('list-based-require-loader')
 
-async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
+export default async function ListBasedRequireLoader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   this.async()
 
   // add defaults:
@@ -119,5 +119,3 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
     this.callback(undefined, source, sourceMap)
   }
 }
-
-module.exports = loader

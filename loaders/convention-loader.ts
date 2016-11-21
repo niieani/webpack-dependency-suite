@@ -9,7 +9,7 @@ import {getFilesInDir} from '../utils'
 import * as debug from 'debug'
 const log = debug('convention-loader')
 
-const conventions: { [convention: string]: ConventionFunction } = {
+export const conventions: { [convention: string]: ConventionFunction } = {
   'extension-swap'(fullPath: string, query: ConventionOptions) {
     const basename = path.basename(fullPath)
     const noExtension = basename.substr(0, basename.lastIndexOf('.')) || basename
@@ -42,7 +42,7 @@ const conventions: { [convention: string]: ConventionFunction } = {
   // },
 }
 
-async function loader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
+export default async function ConventionLoader (this: Webpack.Core.LoaderContext, source: string, sourceMap?: SourceMap.RawSourceMap) {
   this.async()
 
   const query = Object.assign({}, loaderUtils.parseQuery(this.query)) as ConventionOptions
@@ -113,5 +113,3 @@ async function loader (this: Webpack.Core.LoaderContext, source: string, sourceM
     this.callback(undefined, source, sourceMap)
   }
 }
-
-module.exports = loader;

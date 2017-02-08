@@ -1,4 +1,6 @@
 # Webpack Dependency Suite
+
+[![Greenkeeper badge](https://badges.greenkeeper.io/niieani/webpack-dependency-suite.svg)](https://greenkeeper.io/)
 A set of loaders, plugins and utilities designed to help with adding custom dependencies to your project.
 
 ## Usage

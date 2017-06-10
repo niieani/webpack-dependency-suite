@@ -4,6 +4,8 @@ export type LoaderInfo = { loader: string, prefix: string | false }
 type LoaderInfoResolve = EnhancedResolve.ResolveResult & LoaderInfo
 type LoaderInfoError = {error: Error} & LoaderInfo
 
+export type DuplicateHandler = (proposedModuleId: string, module: Webpack.Core.NormalModule, modules: Webpack.Core.NormalModule[], previouslyAssigned: Map<string, Webpack.Core.NormalModule>, retryCount: number) => string
+
 function resolveLoader(compiler, origin, contextPath, loaderInfo: LoaderInfo) {
   return new Promise<LoaderInfoResolve | LoaderInfoError>((resolve, reject) =>
     compiler.resolvers.loader.resolve(origin, contextPath, loaderInfo.loader, (error, resolvedPath, resolveObj) =>
@@ -45,6 +47,8 @@ export class MappedModuleIdsPlugin {
      * RegExp or function, return true if you want to ignore the module
      */
     ignore?: RegExp | ((module: Webpack.Core.NormalModule) => boolean)
+    duplicateHandler?: DuplicateHandler
+    errorOnDuplicates?: boolean
   }) {
     const ignore = options.ignore
     if (ignore) {
@@ -57,13 +61,14 @@ export class MappedModuleIdsPlugin {
   ignoreMethod: ((module: Webpack.Core.NormalModule) => boolean) | undefined
 
   apply(compiler) {
-    if (!this.options.appDir) {
-      this.options.appDir = compiler.options.context
+    const {options} = this
+    if (!options.appDir) {
+      options.appDir = compiler.options.context
     }
 
     let resolvedLoaders = [] as Array<LoaderInfoResolve>
     const beforeRunStep = async (compilingOrWatching, callback) => {
-      const resolved = await Promise.all(this.options.prefixLoaders.map(
+      const resolved = await Promise.all(options.prefixLoaders.map(
         (loaderName) => resolveLoader(compiler, {}, compiler.options.context, loaderName)
       ))
       resolvedLoaders = resolved.filter((r: LoaderInfoError) => !r.error) as Array<LoaderInfoResolve>
@@ -74,6 +79,8 @@ export class MappedModuleIdsPlugin {
     compiler.plugin('watch-run', beforeRunStep)
 
     compiler.plugin('compilation', (compilation) => {
+      const previouslyAssigned = new Map<string, Webpack.Core.NormalModule>()
+
       compilation.plugin('before-module-ids', (modules: Array<Webpack.Core.NormalModule>) => {
         modules.forEach((module) => {
           if (module.userRequest && module.id === null && (!this.ignoreMethod || !this.ignoreMethod(module))) {
@@ -86,24 +93,24 @@ export class MappedModuleIdsPlugin {
             })
 
             const requestedFilePath = requestSep[requestSep.length - 1]
-            let moduleId = path.relative(this.options.appDir, requestedFilePath)
+            let moduleId = path.relative(options.appDir, requestedFilePath)
             if (path.sep === '\\')
               moduleId = moduleId.replace(/\\/g, '/')
 
             const lastMentionOfNodeModules = moduleId.lastIndexOf('node_modules')
             if (lastMentionOfNodeModules >= 0) {
               const firstMentionOfNodeModules = moduleId.indexOf('node_modules')
-              if (this.options.warnOnNestedSubmodules && firstMentionOfNodeModules != lastMentionOfNodeModules) {
+              if (options.warnOnNestedSubmodules && firstMentionOfNodeModules != lastMentionOfNodeModules) {
                 console.warn(`Path is a nested node_modules`)
               }
               // cut out node_modules
               moduleId = moduleId.slice(lastMentionOfNodeModules + 'node_modules'.length + 1)
-            } else if (this.options.dotSlashWhenRelativeToAppDir) {
+            } else if (options.dotSlashWhenRelativeToAppDir) {
               moduleId = `./${moduleId}`
             }
 
-            if (this.options.beforeLoadersTransform) {
-              moduleId = this.options.beforeLoadersTransform(moduleId, module)
+            if (options.beforeLoadersTransform) {
+              moduleId = options.beforeLoadersTransform(moduleId, module)
             }
 
             const rawRequestSplit = module.rawRequest.split(`!`)
@@ -124,8 +131,11 @@ export class MappedModuleIdsPlugin {
               const resolved = resolvedLoaders.find(l => l.path === loader.loader)
               const wasInUserRequest = userRequestLoaderPaths.find(loaderPath => loaderPath === loader.loader)
               if (!resolved || resolved.prefix === '' || resolved.prefix === undefined) {
-                if (wasInUserRequest)
-                  console.warn(`Warning: Keeping '${module.rawRequest}' without the loader prefix '${loader.loader}'. Explicitly silence these warnings by defining the loader in MappedModuleIdsPlugin configuration`)
+                if (wasInUserRequest) {
+                  console.warn(
+                    `Warning: Keeping '${module.rawRequest}' without the loader prefix '${loader.loader}'.` + '\n' +
+                    `Explicitly silence these warnings by defining the loader in MappedModuleIdsPlugin configuration`)
+                }
                 return
               }
               // actively supress prefixing when false
@@ -134,11 +144,11 @@ export class MappedModuleIdsPlugin {
               loadersAdded++
             })
 
-            if (this.options.afterLoadersTransform) {
-              moduleId = this.options.afterLoadersTransform(moduleId, module)
+            if (options.afterLoadersTransform) {
+              moduleId = options.afterLoadersTransform(moduleId, module)
             }
 
-            if (!this.options.keepAllExtensions) {
+            if (!options.keepAllExtensions) {
               const trimExtensions = compiler.options.resolve.extensions as Array<string>
               trimExtensions.forEach(ext => {
                 if (moduleId.endsWith(ext)) {
@@ -147,31 +157,37 @@ export class MappedModuleIdsPlugin {
               })
             }
 
-            if (this.options.afterExtensionTrimmingTransform) {
-              moduleId = this.options.afterExtensionTrimmingTransform(moduleId, module)
+            if (options.afterExtensionTrimmingTransform) {
+              moduleId = options.afterExtensionTrimmingTransform(moduleId, module)
             }
 
             const proposedModuleIdSplit = moduleId.split(`!`)
             const proposedModuleIdPath = proposedModuleIdSplit[proposedModuleIdSplit.length - 1]
 
-            if (this.options.logWhenRawRequestDiffers && !rawRequestPath.startsWith(`.`) && (proposedModuleIdPath !== rawRequestPath)) { // (!loadersAdded && (moduleId !== module.rawRequest) || ...)
+            if (options.logWhenRawRequestDiffers && !rawRequestPath.startsWith(`.`) && (proposedModuleIdPath !== rawRequestPath)) { // (!loadersAdded && (moduleId !== module.rawRequest) || ...)
               console.info(`Raw Request Path (${rawRequestPath}) differs from the generated ID (${proposedModuleIdPath})`)
             }
 
-            let isDuplicate: Webpack.Core.NormalModule | undefined
-            while (isDuplicate = modules.find(m => m.id === moduleId)) {
-              console.error(`Error: Multiple modules with the same ID: '${moduleId}'`)
-              if (isNaN(parseInt(moduleId[0]))) {
-                moduleId = `1-duplicate!${moduleId}`
-              } else {
-                moduleId = `${parseInt(moduleId[0]) + 1}-duplicate!${moduleId}`
-              }
+            let retryCount = 0
+            while (previouslyAssigned.has(moduleId)) {
+              const {
+                duplicateHandler = ((moduleId, module, modules, previouslyAssigned, retryCount) => {
+                  if (options.errorOnDuplicates) {
+                    console.error(`Error: Multiple modules with the same ID: '${moduleId}'`)
+                  }
+                  return `${moduleId}#${retryCount}`
+                }) as DuplicateHandler
+              } = options
+
+              moduleId = duplicateHandler(moduleId, module, modules, previouslyAssigned, retryCount)
+              retryCount++
             }
 
+            previouslyAssigned.set(moduleId, module)
             module.id = moduleId
           }
-        });
-      });
-    });
+        })
+      })
+    })
   }
 }

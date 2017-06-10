@@ -87,7 +87,7 @@ export default async function CommentLoader (this: Webpack.Core.LoaderContext, s
    */
   const commentOnlyImports = comments
     .filter(c => c.type === 'Block')
-    .map(c => c.value.trim().match(/^@import\([\'"`]*([- \./\w]+)['"`]\)* *(@lazy)? *(?:@chunk\(['"`]*([\w-]+)['"`]*\))? *(@lazy)?$/))
+    .map(c => c.value.trim().match(/^@import\([\'"`]*([- \./\w*]+)['"`]\)* *(@lazy)? *(?:@chunk\(['"`]*([\w-]+)['"`]*\))? *(@lazy)?$/))
     .filter(c => !!c)
     .map((c: RegExpMatchArray) => ({
       literal: c[1],

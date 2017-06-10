@@ -120,6 +120,10 @@ const expandGlob = memoize(expandGlobBase, (literal: string, loaderInstance: Web
   return cacheKey
 })
 
+function fixWindowsPath(windowsPath: string) {
+  return windowsPath.replace(/\\/g, '/')
+}
+
 export async function expandAllRequiresForGlob<T extends { literal: string }>(requires: Array<T>, loaderInstance: Webpack.Core.LoaderContext, rootForRelativeResolving: string | false = path.dirname(loaderInstance.resourcePath), returnRelativeLiteral = false) {
   const needDeglobbing = requires.filter(r => r.literal.includes(`*`))
   const deglobbed = requires.filter(r => !r.literal.includes(`*`))
@@ -127,8 +131,9 @@ export async function expandAllRequiresForGlob<T extends { literal: string }>(re
     (await expandGlob(r.literal, loaderInstance, rootForRelativeResolving))
       .map(correctPath => Object.assign({}, r, {
         literal: returnRelativeLiteral ?
-          `./${path.relative(path.dirname(loaderInstance.resourcePath), correctPath)}` :
-          correctPath
+          `./${fixWindowsPath(
+            path.relative(path.dirname(loaderInstance.resourcePath), correctPath)
+          )}` : correctPath
       }))
   )))
   return uniqBy(allDeglobbed, 'literal')

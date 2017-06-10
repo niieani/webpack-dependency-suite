@@ -4,10 +4,10 @@
     "target": "es2017",
     "noImplicitAny": false,
     "inlineSourceMap": false,
-    "strictNullChecks": true,
     "declaration": true,
+    "strict": true,
     "lib": [
-      "dom", "es2017"
+      "dom", "esnext"
     ]
   },
   "exclude": [

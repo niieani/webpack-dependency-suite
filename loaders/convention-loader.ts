@@ -14,10 +14,10 @@ export const conventions: { [convention: string]: ConventionFunction } = {
     const basename = path.basename(fullPath)
     const noExtension = basename.substr(0, basename.lastIndexOf('.')) || basename
     let extensions: string[]
-    if (typeof query.extension !== 'array') {
-      extensions = query.extension ? [query.extension] : ['.html', '.css']
-    } else {
+    if (Array.isArray(query.extension)) {
       extensions = query.extension
+    } else {
+      extensions = query.extension ? [query.extension] : ['.html', '.css']
     }
     const basepath = path.dirname(fullPath)
     return extensions.map(extension => path.join(basepath, noExtension + extension))

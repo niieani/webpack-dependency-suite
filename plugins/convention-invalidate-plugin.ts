@@ -1,4 +1,5 @@
-const log = require('debug')('convention-invalidate-plugin')
+import * as debug from 'debug'
+const log = debug('convention-invalidate-plugin')
 
 export class ConventionInvalidatePlugin {
   constructor(public getInvalidationList = differentExtensionTransformer) { }
@@ -52,7 +53,7 @@ export class TransformWatchFileSystem {
  * "touch", or invalidate all files of the same same path, but different extension
  */
 export const differentExtensionTransformer = function differentExtensionTransformer(changedPaths, watchedFiles: string[]) {
-  const pathsToInvalidate = []
+  const pathsToInvalidate = [] as Array<string>
   changedPaths.forEach(filePath => {
     const pathWithoutExtension = filePath.replace(/\.[^/.]+$/, '')
     const relatedFiles = watchedFiles

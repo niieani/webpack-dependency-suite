@@ -1,6 +1,7 @@
 import { splitRequest } from '../utils/inject'
 import * as path from 'path'
-const log = require('debug')('rewrite-subdir-plugin')
+import * as debug from 'debug'
+const log = debug('rewrite-subdir-plugin')
 
 /**
  * Webpack Resolve plugin, used to check in additional places for the root directory of a given module

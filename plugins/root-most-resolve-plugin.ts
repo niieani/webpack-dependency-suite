@@ -1,9 +1,17 @@
+import {get} from 'lodash'
 import createInnerCallback = require('enhanced-resolve/lib/createInnerCallback')
 import * as getInnerRequest from 'enhanced-resolve/lib/getInnerRequest'
 import * as semver from 'semver'
 import * as path from 'path'
 import * as debug from 'debug'
 const log = debug('root-most-resolve-plugin')
+
+function getDependencyVersion(packageJson: Object, packageName: string): string {
+  return get(packageJson, ['dependencies', packageName]) ||
+    get(packageJson, ['devDependencies', packageName]) ||
+    get(packageJson, ['optionalDependencies', packageName]) ||
+    get(packageJson, ['peerDependencies', packageName])
+}
 
 /**
  * @description Uses the root-most package instead of a nested node_modules package.
@@ -58,8 +66,8 @@ export class RootMostResolvePlugin {
 
       const resolvedVersion = resolvedInParentContext.descriptionFileData && resolvedInParentContext.descriptionFileData.version
       const packageName = resolvedInParentContext.descriptionFileData && resolvedInParentContext.descriptionFileData.name
-      const allowedRange = issuer.descriptionFileData.dependencies[packageName]
-      const isValidRange = semver.validRange(allowedRange)
+      const allowedRange = getDependencyVersion(issuer.descriptionFileData, packageName)
+      const isValidRange = allowedRange && semver.validRange(allowedRange)
 
       log(`Analyzing whether package ${packageName}@${allowedRange} can be substituted by a parent version ${resolvedVersion}`)
 

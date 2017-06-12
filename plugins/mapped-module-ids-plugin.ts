@@ -1,6 +1,7 @@
 import * as path from 'path'
 
-export type LoaderInfo = { loader: string, prefix: string | false }
+export type Prefix = string | false | ((moduleId: string) => string)
+export type LoaderInfo = { loader: string, prefix: Prefix }
 type LoaderInfoResolve = EnhancedResolve.ResolveResult & LoaderInfo
 type LoaderInfoError = {error: Error} & LoaderInfo
 
@@ -140,7 +141,11 @@ export class MappedModuleIdsPlugin {
               }
               // actively supress prefixing when false
               if (resolved.prefix === false) return
-              moduleId = `${resolved.prefix}!${moduleId}`
+              if (typeof resolved.prefix === 'function') {
+                moduleId = resolved.prefix(moduleId)
+              } else {
+                moduleId = `${resolved.prefix}!${moduleId}`
+              }
               loadersAdded++
             })
 

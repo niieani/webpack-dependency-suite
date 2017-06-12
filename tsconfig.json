@@ -4,6 +4,7 @@
     "target": "es2017",
     "noImplicitAny": false,
     "inlineSourceMap": false,
+    "sourceMap": true,
     "declaration": true,
     "strict": true,
     "lib": [

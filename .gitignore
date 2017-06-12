@@ -13,3 +13,4 @@ example/*.d.ts
 plugins/*.d.ts
 utils/*.d.ts
 /index.d.ts
+*.map

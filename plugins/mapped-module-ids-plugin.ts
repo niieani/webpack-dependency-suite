@@ -10,10 +10,10 @@ export type DuplicateHandler = (proposedModuleId: string, module: Webpack.Core.N
 function resolveLoader(compiler, origin, contextPath, loaderInfo: LoaderInfo) {
   return new Promise<LoaderInfoResolve | LoaderInfoError>((resolve, reject) =>
     compiler.resolvers.loader.resolve(origin, contextPath, loaderInfo.loader, (error, resolvedPath, resolveObj) =>
-      error ? resolve(Object.assign({error}, loaderInfo)) || console.error(`No loader resolved for '${loaderInfo.loader}'`) :
+      (error || !resolveObj) ? (resolve(Object.assign({error}, loaderInfo)) || console.error(`No loader resolved for '${loaderInfo.loader}'`)) :
       resolve(Object.assign(resolveObj, loaderInfo))
     )
-  );
+  )
 }
 
 /**

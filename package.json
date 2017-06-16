@@ -86,7 +86,7 @@
     "source-map": "^0.5.6"
   },
   "devDependencies": {
-    "@types/jest": "^19.2.4",
+    "@types/jest": "^20.0.0",
     "aurelia-templating-resources": "^1.4.0",
     "chromedriver": "^2.29.2",
     "enhanced-resolve": "^3.1.0",

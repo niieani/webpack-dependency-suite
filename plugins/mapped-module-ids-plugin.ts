@@ -1,8 +1,10 @@
 import * as path from 'path'
+import * as fs from 'fs'
+import {promisify} from 'util'
 
 export type Prefix = string | false | ((moduleId: string) => string)
 export type LoaderInfo = { loader: string, prefix: Prefix }
-type LoaderInfoResolve = EnhancedResolve.ResolveResult & LoaderInfo
+type LoaderInfoResolve = Pick<EnhancedResolve.ResolveResult, 'path'> & LoaderInfo
 type LoaderInfoError = {error: Error} & LoaderInfo
 
 export type DuplicateHandler = (proposedModuleId: string, module: Webpack.Core.NormalModule, modules: Webpack.Core.NormalModule[], previouslyAssigned: Map<string, Webpack.Core.NormalModule>, retryCount: number) => string
@@ -14,6 +16,19 @@ function resolveLoader(compiler, origin, contextPath, loaderInfo: LoaderInfo) {
       resolve(Object.assign(resolveObj, loaderInfo))
     )
   )
+}
+
+async function resolveLoaderManual(compiler, origin, contextPath, loaderInfo: LoaderInfo, fileSystem: typeof fs) {
+  const stat = promisify(fileSystem.stat)
+  const results = await Promise.all((compiler.options.resolveLoader.modules as Array<string>).map(m => {
+    const resolvedPath = path.join(m, loaderInfo.loader)
+    return stat(resolvedPath).then(result => result.isFile() && resolvedPath).catch(err => false)
+  }))
+  const resolved = results.filter((result): result is string => typeof result !== 'boolean')
+  if (resolved.length) {
+    return {...loaderInfo, path: resolved[0]}
+  }
+  return {...loaderInfo, error: new Error(`Unable to resolve: ${loaderInfo.loader}`)}
 }
 
 /**
@@ -50,6 +65,7 @@ export class MappedModuleIdsPlugin {
     ignore?: RegExp | ((module: Webpack.Core.NormalModule) => boolean)
     duplicateHandler?: DuplicateHandler
     errorOnDuplicates?: boolean
+    useManualResolve?: boolean | 'node-fs' // uses node's filesystem instead of Webpack's builtin
   }) {
     const ignore = options.ignore
     if (ignore) {
@@ -68,9 +84,11 @@ export class MappedModuleIdsPlugin {
     }
 
     let resolvedLoaders = [] as Array<LoaderInfoResolve>
+    const fileSystem = options.useManualResolve && options.useManualResolve !== 'node-fs' && (compiler.inputFileSystem as typeof fs) || (require('fs') as typeof fs)
     const beforeRunStep = async (compilingOrWatching, callback) => {
+      const resolverFunction = options.useManualResolve ? resolveLoaderManual : resolveLoader
       const resolved = await Promise.all(options.prefixLoaders.map(
-        (loaderName) => resolveLoader(compiler, {}, compiler.options.context, loaderName)
+        (loaderName) => resolverFunction(compiler, {}, compiler.options.context, loaderName, fileSystem)
       ))
       resolvedLoaders = resolved.filter((r: LoaderInfoError) => !r.error) as Array<LoaderInfoResolve>
       callback()

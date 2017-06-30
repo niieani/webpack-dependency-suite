@@ -1,34 +1,31 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import {promisify} from 'util'
+import * as resolve from 'enhanced-resolve'
+import {
+  LoggingCallbackWrapper,
+  ResolveContext
+} from "enhanced-resolve/lib/common-types";
+
+type ResolverInstance = {
+  (path: string, request: string, callback: LoggingCallbackWrapper): void;
+  (context: ResolveContext, path: string, request: string, callback: LoggingCallbackWrapper): void;
+}
 
 export type Prefix = string | false | ((moduleId: string) => string)
 export type LoaderInfo = { loader: string, prefix: Prefix }
 type LoaderInfoResolve = Pick<EnhancedResolve.ResolveResult, 'path'> & LoaderInfo
-type LoaderInfoError = {error: Error} & LoaderInfo
+type LoaderInfoError = {error: Error | null | undefined} & LoaderInfo
 
 export type DuplicateHandler = (proposedModuleId: string, module: Webpack.Core.NormalModule, modules: Webpack.Core.NormalModule[], previouslyAssigned: Map<string, Webpack.Core.NormalModule>, retryCount: number) => string
 
-function resolveLoader(compiler, origin, contextPath, loaderInfo: LoaderInfo) {
+function resolveLoader(compiler, origin, contextPath, loaderInfo: LoaderInfo, resolver: ResolverInstance) {
   return new Promise<LoaderInfoResolve | LoaderInfoError>((resolve, reject) =>
-    compiler.resolvers.loader.resolve(origin, contextPath, loaderInfo.loader, (error, resolvedPath, resolveObj) =>
-      (error || !resolveObj) ? (resolve(Object.assign({error}, loaderInfo)) || console.error(`No loader resolved for '${loaderInfo.loader}'`)) :
-      resolve(Object.assign(resolveObj, loaderInfo))
+    resolver(origin, contextPath, loaderInfo.loader, (error, resolvedPath, resolveObj) =>
+      (error || !resolveObj) ? (resolve({error, ...loaderInfo}) || console.error(`No loader resolved for '${loaderInfo.loader}'`)) :
+      resolve({...resolveObj, ...loaderInfo})
     )
   )
-}
-
-async function resolveLoaderManual(compiler, origin, contextPath, loaderInfo: LoaderInfo, fileSystem: typeof fs) {
-  const stat = promisify(fileSystem.stat)
-  const results = await Promise.all((compiler.options.resolveLoader.modules as Array<string>).map(m => {
-    const resolvedPath = path.join(m, loaderInfo.loader)
-    return stat(resolvedPath).then(result => result.isFile() && resolvedPath).catch(err => false)
-  }))
-  const resolved = results.filter((result): result is string => typeof result !== 'boolean')
-  if (resolved.length) {
-    return {...loaderInfo, path: resolved[0]}
-  }
-  return {...loaderInfo, error: new Error(`Unable to resolve: ${loaderInfo.loader}`)}
 }
 
 /**
@@ -85,13 +82,18 @@ export class MappedModuleIdsPlugin {
 
     let resolvedLoaders = [] as Array<LoaderInfoResolve>
     const fileSystem = options.useManualResolve && options.useManualResolve !== 'node-fs' && (compiler.inputFileSystem as typeof fs) || (require('fs') as typeof fs)
+    const resolver = options.useManualResolve ? resolve.create({fileSystem, ...compiler.options.resolveLoader}) : (compiler.resolvers.loader.resolve as ResolverInstance)
+
     const beforeRunStep = async (compilingOrWatching, callback) => {
-      const resolverFunction = options.useManualResolve ? resolveLoaderManual : resolveLoader
+      if (resolvedLoaders.length) {
+        // cached from previous resolve
+        return callback()
+      }
       const resolved = await Promise.all(options.prefixLoaders.map(
-        (loaderName) => resolverFunction(compiler, {}, compiler.options.context, loaderName, fileSystem)
+        (loaderName) => resolveLoader(compiler, {}, compiler.options.context, loaderName, resolver)
       ))
       resolvedLoaders = resolved.filter((r: LoaderInfoError) => !r.error) as Array<LoaderInfoResolve>
-      callback()
+      return callback()
     }
 
     compiler.plugin('run', beforeRunStep)

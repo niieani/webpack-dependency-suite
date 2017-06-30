@@ -82,7 +82,7 @@ export class MappedModuleIdsPlugin {
 
     let resolvedLoaders = [] as Array<LoaderInfoResolve>
     const fileSystem = options.useManualResolve && options.useManualResolve !== 'node-fs' && (compiler.inputFileSystem as typeof fs) || (require('fs') as typeof fs)
-    const resolver = options.useManualResolve ? resolve.create({fileSystem, ...compiler.options.resolveLoader}) : (compiler.resolvers.loader.resolve as ResolverInstance)
+    const resolver = options.useManualResolve ? resolve.create({fileSystem, ...compiler.options.resolveLoader}) : undefined
 
     const beforeRunStep = async (compilingOrWatching, callback) => {
       if (resolvedLoaders.length) {
@@ -90,7 +90,7 @@ export class MappedModuleIdsPlugin {
         return callback()
       }
       const resolved = await Promise.all(options.prefixLoaders.map(
-        (loaderName) => resolveLoader(compiler, {}, compiler.options.context, loaderName, resolver)
+        (loaderName) => resolveLoader(compiler, {}, compiler.options.context, loaderName, resolver || (compiler.resolvers.loader.resolve as ResolverInstance))
       ))
       resolvedLoaders = resolved.filter((r: LoaderInfoError) => !r.error) as Array<LoaderInfoResolve>
       return callback()

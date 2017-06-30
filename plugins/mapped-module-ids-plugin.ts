@@ -89,8 +89,9 @@ export class MappedModuleIdsPlugin {
         // cached from previous resolve
         return callback()
       }
+      const webpackLoaderResolver = compiler.resolvers.loader.resolve.bind(compiler.resolvers.loader) as ResolverInstance
       const resolved = await Promise.all(options.prefixLoaders.map(
-        (loaderName) => resolveLoader(compiler, {}, compiler.options.context, loaderName, resolver || (compiler.resolvers.loader.resolve as ResolverInstance))
+        (loaderName) => resolveLoader(compiler, {}, compiler.options.context, loaderName, resolver || webpackLoaderResolver)
       ))
       resolvedLoaders = resolved.filter((r: LoaderInfoError) => !r.error) as Array<LoaderInfoResolve>
       return callback()

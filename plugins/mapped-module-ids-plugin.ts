@@ -105,8 +105,10 @@ export class MappedModuleIdsPlugin {
 
       compilation.plugin('before-module-ids', (modules: Array<Webpack.Core.NormalModule>) => {
         modules.forEach((module) => {
-          if (module.userRequest && module.id === null && (!this.ignoreMethod || !this.ignoreMethod(module))) {
-            const requestSep = module.userRequest.split('!')
+          if (module.userRequest && module.rawRequest && module.id === null && (!this.ignoreMethod || !this.ignoreMethod(module))) {
+            const userRequest = module.userRequest || ''
+            const rawRequest = module.rawRequest || ''
+            const requestSep = userRequest.split('!')
             const loadersUsed = requestSep.length > 1
             const userRequestLoaders = requestSep.slice(0, requestSep.length - 1)
             const userRequestLoaderPaths = userRequestLoaders.map(name => {
@@ -135,7 +137,7 @@ export class MappedModuleIdsPlugin {
               moduleId = options.beforeLoadersTransform(moduleId, module)
             }
 
-            const rawRequestSplit = module.rawRequest.split(`!`)
+            const rawRequestSplit = rawRequest.split(`!`)
             const rawRequestPath = rawRequestSplit[rawRequestSplit.length - 1]
             const rawRequestPathParts = rawRequestPath.split(`/`)
 
@@ -155,7 +157,7 @@ export class MappedModuleIdsPlugin {
               if (!resolved || resolved.prefix === '' || resolved.prefix === undefined) {
                 if (wasInUserRequest) {
                   console.warn(
-                    `Warning: Keeping '${module.rawRequest}' without the loader prefix '${loader.loader}'.` + '\n' +
+                    `Warning: Keeping '${rawRequest}' without the loader prefix '${loader.loader}'.` + '\n' +
                     `Explicitly silence these warnings by defining the loader in MappedModuleIdsPlugin configuration`)
                 }
                 return

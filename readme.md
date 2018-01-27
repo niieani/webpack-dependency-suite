@@ -4,7 +4,50 @@
 A set of loaders, plugins and utilities designed to help with adding custom dependencies to your project.
 
 ## Usage
+
 TODO.
+
+### Plugins
+
+#### ConventionInvalidatePlugin
+
+This plugin allows customisation of the modules that are invalidated as a result
+of a change to another module.
+
+By default it will invalidate all modules that share the name as a changed
+module except for the extension, e.g. if `./index.js` was changed and
+`./index.html` was watched, then `./index.html` would be invalidated and
+rebuild.
+
+It is possible to pass in a function to implement a custom invalidation rule
+instead; the function will be given two arguments, an array of changed modules
+and an array of all watched modules and should return an array of _additional_
+modules which should be invalidated (which should not generally include the
+changed modules, as they will already be rebuild).
+
+The plugin is used by adding it to the [webpack config
+plugins](https://webpack.js.org/concepts/plugins/#configuration), e.g.
+
+```javascript
+const { ConventionInvalidatePlugin } = require('webpack-dependency-suite');
+
+const config = {
+  // rest of the config somewhere in here
+  plugins: {
+    // Default behaviour
+    new ConventionInvalidatePlugin(),
+
+    // Customised behaviour
+    new ConventionInvalidatePlugin((changed, watched) => {
+      return [/* list of additional invalidated modules */];
+    }),
+  },
+};
+```
+
+#### Other Plugins
+
+TODO
 
 ## Parts of the Suite
 

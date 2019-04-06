@@ -77,7 +77,7 @@
     "@types/semver": "^5.3.32",
     "@types/webpack": "^3.0.0",
     "acorn": "^5.0.3",
-    "cheerio": "^1.0.0-rc.1",
+    "cheerio": "^1.0.0-rc.3",
     "debug": "^3.0.0",
     "escape-string-regexp": "^1.0.5",
     "html-loader": "^0.4.5",

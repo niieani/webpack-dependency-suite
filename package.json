@@ -79,7 +79,7 @@
     "acorn": "^5.0.3",
     "cheerio": "^1.0.0-rc.1",
     "debug": "^3.0.0",
-    "escape-string-regexp": "^1.0.5",
+    "escape-string-regexp": "^2.0.0",
     "html-loader": "^0.4.5",
     "loader-utils": "^1.1.0",
     "lodash": "^4.17.4",

@@ -67,7 +67,7 @@
   },
   "dependencies": {
     "@types/acorn": "^4.0.2",
-    "@types/cheerio": "^0.22.1",
+    "@types/cheerio": "^0.22.12",
     "@types/debug": "^0.0.29",
     "@types/enhanced-resolve": "^3.0.3",
     "@types/escape-string-regexp": "^0.0.30",

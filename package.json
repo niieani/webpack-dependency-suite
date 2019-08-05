@@ -103,7 +103,7 @@
     "typescript": "^2.4.1",
     "webpack": "^3.0.0",
     "webpack-dev-server": "^2.5.0",
-    "webpack-sources": "^1.0.1"
+    "webpack-sources": "^1.4.2"
   },
   "peerDependencies": {
     "enhanced-resolve": "^3.0.0"

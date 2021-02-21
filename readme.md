@@ -1,3 +1,5 @@
+# NO LONGER MAINTAINED. PLEASE DO NOT USE OR FORK.
+
 # Webpack Dependency Suite
 
 [![Greenkeeper badge](https://badges.greenkeeper.io/niieani/webpack-dependency-suite.svg)](https://greenkeeper.io/)
